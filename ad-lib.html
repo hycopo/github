@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>インタラクティブ・ギターアドリブ・ロードマップ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Harmony -->
+    <!-- Application Structure Plan: A single-page application with a fixed sidebar for navigating through the 4 phases of the 12-month roadmap. The main content area dynamically displays the details for the selected phase/month. This structure was chosen to transform the linear report into an explorable, non-linear learning tool, allowing users to easily jump between topics. Key interactions include an interactive fretboard diagram for visualizing scales and chord tones, which is more intuitive and engaging than static text or tables. -->
+    <!-- Visualization & Content Choices: 1. Intro: Practice Breakdown -> Goal: Inform -> Viz: Chart.js Pie Chart -> Interaction: Hover -> Justification: Provides a quick visual summary of the time commitment. 2. Pentatonic Scales: Shape diagrams -> Goal: Organize/Inform -> Viz: Interactive HTML/CSS Fretboard -> Interaction: Click buttons to highlight shapes -> Justification: Far superior to static images for learning fingerings across the neck. 3. Chord Tones: Static Table -> Goal: Relationships -> Viz: Interactive HTML/CSS Fretboard (enhancement of #2) -> Interaction: Click chord buttons to highlight corresponding notes within the selected scale shape -> Justification: Makes the abstract concept of chord tone targeting tangible and visual, directly connecting theory to the fretboard. Library: Chart.js for the pie chart, Vanilla JS for all other interactions. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #FDFBF6;
+            color: #3C3633;
+        }
+        .sidebar-link.active {
+            background-color: #E0C097;
+            color: #3C3633;
+            font-weight: bold;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        .fretboard {
+            display: grid;
+            grid-template-columns: 30px repeat(17, 1fr);
+            gap: 2px;
+            background-color: #A0937D;
+            padding: 10px;
+            border-radius: 8px;
+            overflow-x: auto;
+            min-width: 600px; 
+        }
+        .string-label, .fret {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .fret {
+            background-color: #E0C097;
+            height: 30px;
+            position: relative;
+        }
+        .fret.open {
+             background-color: #A0937D;
+        }
+        .note {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 10px;
+            color: white;
+            transition: all 0.2s ease-in-out;
+            transform: scale(0);
+        }
+        .note.visible {
+            transform: scale(1);
+        }
+        .note.root { background-color: #C84B31; }
+        .note.scale-note { background-color: #4A55A2; }
+        .note.chord-tone { background-color: #219C90; }
+        .fret-marker {
+            position: absolute;
+            bottom: -20px;
+            font-size: 12px;
+            color: #776B5D;
+        }
+        .single-dot::after, .double-dot::before, .double-dot::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: #776B5D;
+            border-radius: 50%;
+            top: 50%;
+        }
+        .single-dot::after { transform: translateY(-50%); }
+        .double-dot::before { transform: translate(-10px, -50%); }
+        .double-dot::after { transform: translate(10px, -50%); }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 350px;
+            margin: auto;
+            height: 350px;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="flex flex-col md:flex-row min-h-screen">
+        <!-- Sidebar -->
+        <nav id="sidebar" class="w-full md:w-64 bg-[#EEE2DE] p-4 md:p-6 shrink-0">
+            <h1 class="text-2xl font-bold text-[#776B5D] mb-6">学習ロードマップ</h1>
+            <ul class="space-y-2">
+                <li><a href="#intro" class="sidebar-link block p-3 rounded-lg transition-colors duration-200 hover:bg-[#E0C097]">序論</a></li>
+                <li>
+                    <h2 class="text-lg font-bold text-[#776B5D] mt-4 mb-2">フェーズ1：基礎固め</h2>
+                    <ul class="space-y-1 ml-4">
+                        <li><a href="#month1" class="sidebar-link block p-2 rounded-lg transition-colors duration-200 hover:bg-[#E0C097]">1ヶ月目：指板</a></li>
+                        <li><a href="#month2-3" class="sidebar-link block p-2 rounded-lg transition-colors duration-200 hover:bg-[#E0C097]">2-3ヶ月目：スケール</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <h2 class="text-lg font-bold text-[#776B5D] mt-4 mb-2">フェーズ2：語彙の習得</h2>
+                    <ul class="space-y-1 ml-4">
+                        <li><a href="#month4" class="sidebar-link block p-2 rounded-lg transition-colors duration-200 hover:bg-[#E0C097]">4ヶ月目：テクニック</a></li>
+                        <li><a href="#month5-6" class="sidebar-link block p-2 rounded-lg transition-colors duration-200 hover:bg-[#E0C097]">5-6ヶ月目：ブルース</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <h2 class="text-lg font-bold text-[#776B5D] mt-4 mb-2">フェーズ3：流暢さの獲得</h2>
+                    <ul class="space-y-1 ml-4">
+                        <li><a href="#month7-8" class="sidebar-link block p-2 rounded-lg transition-colors duration-200 hover:bg-[#E0C097]">7-8ヶ月目：コードトーン</a></li>
+                        <li><a href="#month9" class="sidebar-link block p-2 rounded-lg transition-colors duration-200 hover:bg-[#E0C097]">9ヶ月目：色彩パレット</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <h2 class="text-lg font-bold text-[#776B5D] mt-4 mb-2">フェーズ4：自己表現</h2>
+                    <ul class="space-y-1 ml-4">
+                        <li><a href="#month10" class="sidebar-link block p-2 rounded-lg transition-colors duration-200 hover:bg-[#E0C097]">10ヶ月目：ソロ構築</a></li>
+                        <li><a href="#month11" class="sidebar-link block p-2 rounded-lg transition-colors duration-200 hover:bg-[#E0C097]">11ヶ月目：耳コピ</a></li>
+                        <li><a href="#month12" class="sidebar-link block p-2 rounded-lg transition-colors duration-200 hover:bg-[#E0C097]">12ヶ月目：統合</a></li>
+                    </ul>
+                </li>
+                 <li><a href="#conclusion" class="sidebar-link block p-3 rounded-lg transition-colors duration-200 hover:bg-[#E0C097]">結論</a></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-6 md:p-10 overflow-y-auto">
+            <div id="intro" class="content-section">
+                <h2 class="text-3xl font-bold mb-4">序論：スケールから物語へ - アドリブという言語</h2>
+                <p class="mb-6 leading-relaxed">アドリブ（即興演奏）とは、ランダムな音を高速で弾きこなすことではなく、音楽的なアイデアを自発的に紡ぎ出す対話です。このロードマップの最終目標は、単に記憶したパターンをなぞるのではなく、頭の中に鳴り響く音楽的アイデアをリアルタイムで表現する能力を身につけることです。</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <h3 class="text-2xl font-bold mb-3">1時間の練習計画</h3>
+                        <p class="mb-4">本稿では、「1日1時間」の練習を基本フレームワークとします。この時間を効果的に分割することで、スキルセット全体にわたって着実な進歩を確保します。このチャートは、各要素への推奨される時間配分を示しています。</p>
+                        <ul class="list-disc list-inside space-y-2">
+                            <li><span class="font-bold">ウォームアップ/テクニック (10分):</span> 指の準備運動と基礎技術の維持。</li>
+                            <li><span class="font-bold">新概念の学習 (20分):</span> 新しいスケール、理論、テクニックの習得。</li>
+                            <li><span class="font-bold">応用/アドリブ実践 (30分):</span> 学んだことを音楽的な文脈で実際に使う練習。</li>
+                        </ul>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="practiceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div id="month1" class="content-section">
+                <h2 class="text-3xl font-bold mb-4">1ヶ月目：指板のマッピング - あなたの内なるGPS</h2>
+                <p class="mb-6 leading-relaxed">アドリブ能力の最も重要な基盤は、指板上の音名を完全に把握することです。演奏中に「音を探す」という認知的な負荷を取り除くことで、創造性のために精神的なリソースを解放することが目的です。オクターブ・シェイプを活用すれば、指板上のあらゆる音を効率的に見つけ出せます。</p>
+                 <div class="bg-[#EEE2DE] p-6 rounded-lg">
+                    <h3 class="text-xl font-bold mb-2">デイリー・エクササイズ (15分)</h3>
+                    <p>毎日ランダムに音名を一つ選び（例：「F」）、まず6弦と5弦でその音を探します。その2つのアンカーポイントからオクターブ・シェイプを駆使して、指板上のすべての「F」を見つけ出しましょう。これを毎日違う音で繰り返します。</p>
+                </div>
+            </div>
+
+            <div id="month2-3" class="content-section">
+                <h2 class="text-3xl font-bold mb-4">2〜3ヶ月目：マイナーペンタトニックスケール</h2>
+                <p class="mb-6 leading-relaxed">マイナーペンタトニックスケールは、ロックやブルースの根幹をなす「音楽のアルファベット」です。指板全体で自由にアドリブするためには、5つのポジション（シェイプ）を習得し、それらを滑らかに接続する練習が不可欠です。</p>
+                <div class="bg-[#EEE2DE] p-6 rounded-lg overflow-hidden">
+                    <h3 class="text-xl font-bold mb-3">インタラクティブ指板：Aマイナーペンタトニック</h3>
+                    <p class="mb-4">下のボタンをクリックして、5つの異なるポジション（シェイプ）を確認してください。ルート音（R）が赤で表示されます。</p>
+                    <div id="penta-controls" class="flex flex-wrap gap-2 mb-4"></div>
+                    <div id="penta-fretboard" class="w-full overflow-x-auto"></div>
+                </div>
+            </div>
+            
+            <div id="month4" class="content-section">
+                <h2 class="text-3xl font-bold mb-4">4ヶ月目：ギターの魂 - コア・フレージング・テクニック</h2>
+                <p class="mb-6 leading-relaxed">スケールは単なる音の羅列です。それらの音に人間的な表現を与え、ギターを「歌わせる」のがフレージング・テクニックです。特にチョーキングのピッチの正確性は、プロフェッショナルなサウンドへの鍵となります。</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                    <div class="bg-[#EEE2DE] p-4 rounded-lg">
+                        <span class="text-4xl">⇗</span>
+                        <h3 class="text-lg font-bold mt-2">チョーキング</h3>
+                        <p class="text-sm">ピッチの正確性が命。手首の回転を使い、目標の音に合わせる練習を。</p>
+                    </div>
+                    <div class="bg-[#EEE2DE] p-4 rounded-lg">
+                        <span class="text-4xl">∼</span>
+                        <h3 class="text-lg font-bold mt-2">ビブラート</h3>
+                        <p class="text-sm">速さと深さをコントロール。音に感情的な揺らぎを加える。</p>
+                    </div>
+                    <div class="bg-[#EEE2DE] p-4 rounded-lg">
+                        <span class="text-4xl">→</span>
+                        <h3 class="text-lg font-bold mt-2">スライド</h3>
+                        <p class="text-sm">音から音へ滑らかに移動。一貫した指の圧力を保つことが重要。</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="month5-6" class="content-section">
+                <h2 class="text-3xl font-bold mb-4">5〜6ヶ月目：トレーニングの場としてのブルース</h2>
+                <p class="mb-6 leading-relaxed">12小節ブルースは、アドリブ練習の究極の「道場」です。反復的で予測可能な構造が、フレージング、タイミング、そして「フィール」に集中するための理想的な環境を提供します。</p>
+                <div class="bg-[#EEE2DE] p-6 rounded-lg">
+                    <h3 class="text-xl font-bold mb-3">Aの12小節ブルース進行</h3>
+                    <div class="grid grid-cols-4 gap-2 text-center font-mono">
+                        <div class="p-3 bg-[#FDFBF6] rounded">A7</div><div class="p-3 bg-[#FDFBF6] rounded">A7</div><div class="p-3 bg-[#FDFBF6] rounded">A7</div><div class="p-3 bg-[#FDFBF6] rounded">A7</div>
+                        <div class="p-3 bg-[#E0C097] rounded">D7</div><div class="p-3 bg-[#E0C097]rounded">D7</div><div class="p-3 bg-[#FDFBF6] rounded">A7</div><div class="p-3 bg-[#FDFBF6] rounded">A7</div>
+                        <div class="p-3 bg-[#776B5D] text-white rounded">E7</div><div class="p-3 bg-[#E0C097] rounded">D7</div><div class="p-3 bg-[#FDFBF6] rounded">A7</div><div class="p-3 bg-[#776B5D] text-white rounded">E7</div>
+                    </div>
+                    <p class="mt-4">YouTubeなどで「Slow Blues Backing Track in A」を検索し、Aマイナーペンタトニックスケールと学んだテクニックを使ってアドリブを試してみましょう。</p>
+                </div>
+            </div>
+
+            <div id="month7-8" class="content-section">
+                <h2 class="text-3xl font-bold mb-4">7〜8ヶ月目：コードトーン・ターゲティングの技術</h2>
+                <p class="mb-6 leading-relaxed">演奏を次のレベルに引き上げるには、コード進行の「上で」弾くのではなく、「中を」通り抜けて弾く感覚が必要です。演奏中のコードの構成音（コードトーン）を強調することで、ソロはよりメロディックで意図的に聞こえるようになります。</p>
+                <div class="bg-[#EEE2DE] p-6 rounded-lg overflow-hidden">
+                    <h3 class="text-xl font-bold mb-3">インタラクティブ指板：コードトーン・マップ</h3>
+                    <p class="mb-4">まずペンタトニックのポジションを選び、次にコードボタン（A7, D7, E7）をクリックしてください。選択したコードのルート音（R）、その他の構成音（緑）、スケール音（青）が表示されます。</p>
+                    <div class="flex flex-wrap gap-2 mb-2">
+                        <span class="font-bold self-center">ポジション:</span>
+                        <div id="ct-penta-controls" class="flex flex-wrap gap-2"></div>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <span class="font-bold self-center">コード:</span>
+                        <div id="ct-chord-controls" class="flex flex-wrap gap-2"></div>
+                    </div>
+                    <div id="ct-fretboard" class="w-full overflow-x-auto"></div>
+                </div>
+            </div>
+
+            <div id="month9" class="content-section">
+                <h2 class="text-3xl font-bold mb-4">9ヶ月目：色彩パレットの拡張</h2>
+                <p class="mb-6 leading-relaxed">音楽的な物語は「緊張と緩和」によって作られます。ブルーノート（$b5$）でブルージーな緊張感を加えたり、メジャーペンタトニックで明るい解決感を演出したりすることで、感情の輪郭をより豊かにコントロールできるようになります。</p>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-[#EEE2DE] p-4 rounded-lg">
+                        <h3 class="text-lg font-bold">ブルーノート ($b5$)</h3>
+                        <p class="text-sm">キーがAの場合はE$b$。経過音として使い、ブルージーな深みと緊張感を生み出します。</p>
+                    </div>
+                    <div class="bg-[#EEE2DE] p-4 rounded-lg">
+                        <h3 class="text-lg font-bold">メジャーペンタトニック</h3>
+                        <p class="text-sm">Iコード（A7）の上で使うと、より明るくカントリー的なサウンドになり、強い解決感を演出できます。</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="month10" class="content-section">
+                 <h2 class="text-3xl font-bold mb-4">10ヶ月目：ソロの建築術 - 音楽的ストーリーテリング</h2>
+                <p class="mb-6 leading-relaxed">優れたソロには物語の起承転結があります。個々のフレーズから、ソロ全体の構成へと焦点を移し、聴き手の感情を揺さぶるストーリーを構築する練習をします。</p>
+                <div class="bg-[#EEE2DE] p-6 rounded-lg">
+                    <h3 class="text-xl font-bold mb-3">ソロの構造</h3>
+                    <div class="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0 md:space-x-4">
+                        <div class="text-center">
+                            <div class="p-4 bg-[#FDFBF6] rounded-full w-24 h-24 flex items-center justify-center mx-auto">始まり</div>
+                            <p class="mt-2 text-sm">シンプルで記憶に残りやすいモチーフ</p>
+                        </div>
+                        <div class="text-2xl text-[#776B5D] font-bold">→</div>
+                        <div class="text-center">
+                            <div class="p-4 bg-[#FDFBF6] rounded-full w-24 h-24 flex items-center justify-center mx-auto">発展</div>
+                            <p class="mt-2 text-sm">モチーフを変化させ、音数を増やす</p>
+                        </div>
+                        <div class="text-2xl text-[#776B5D] font-bold">→</div>
+                        <div class="text-center">
+                            <div class="p-4 bg-[#E0C097] rounded-full w-24 h-24 flex items-center justify-center mx-auto">クライマックス</div>
+                            <p class="mt-2 text-sm">音域を上げ、強度を高める</p>
+                        </div>
+                        <div class="text-2xl text-[#776B5D] font-bold">→</div>
+                        <div class="text-center">
+                            <div class="p-4 bg-[#FDFBF6] rounded-full w-24 h-24 flex items-center justify-center mx-auto">解決</div>
+                            <p class="mt-2 text-sm">再び落ち着かせ、モチーフに戻る</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="month11" class="content-section">
+                <h2 class="text-3xl font-bold mb-4">11ヶ月目：耳と手の接続 - トランスクリプション（耳コピ）</h2>
+                <p class="mb-6 leading-relaxed">アドリブの最終目標は、頭の中に聞こえる音楽を演奏することです。トランスクリプションは、このスキルを構築する最も直接的な方法です。重要なのは結果（リックを覚えること）よりも、そのプロセス（耳と音楽脳をアップグレードすること）です。</p>
+                <div class="bg-[#EEE2DE] p-6 rounded-lg">
+                    <h3 class="text-xl font-bold mb-3">耳コピのプロセス</h3>
+                    <ol class="list-decimal list-inside space-y-2">
+                        <li><span class="font-bold">シンプルなフレーズを選ぶ:</span> B.B.キングの曲など、メロディックでゆっくりなものから。</li>
+                        <li><span class="font-bold">テクノロジーを活用する:</span> YouTubeの再生速度設定などでスローダウンさせる。</li>
+                        <li><span class="font-bold">ループして歌う:</span> 短いフレーズを分離し、正確に歌えるまで聴き込む。</li>
+                        <li><span class="font-bold">音を探す:</span> スケール知識を使い、歌っている音を指板上で見つける。</li>
+                        <li><span class="font-bold">分析する:</span> なぜそのフレーズが機能するのか？（コードトーン、リズムなど）を考える。</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div id="month12" class="content-section">
+                <h2 class="text-3xl font-bold mb-4">12ヶ月目：統合と今後の道</h2>
+                <p class="mb-6 leading-relaxed">この月は、これまで学んだすべてを統合します。ブルースで培ったスキルは普遍的であり、他のジャンルへ応用するための強固な基盤となります。自己録音による客観的なフィードバックは、継続的な改善の鍵です。</p>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-[#EEE2DE] p-4 rounded-lg">
+                        <h3 class="text-lg font-bold">ブルースからの脱却</h3>
+                        <p class="text-sm">ファンクやロックなど、異なるスタイルのバッキングトラックで練習し、スキルの応用範囲を広げましょう。ミクソリディアンやドリアンといったモードの学習も次のステップです。</p>
+                    </div>
+                    <div class="bg-[#EEE2DE] p-4 rounded-lg">
+                        <h3 class="text-lg font-bold">最も重要なツール：自己録音</h3>
+                        <p class="text-sm">練習を録音し、聴き返すことで、リズム、ピッチ、フィールなどを客観的に評価できます。このフィードバックループが成長を加速させます。</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="conclusion" class="content-section">
+                <h2 class="text-3xl font-bold mb-4">結論：生涯にわたる旅</h2>
+                <p class="leading-relaxed">この12ヶ月間のロードマップは、指板のマッピングから音楽的な物語を語るまでの道のりを概説しました。しかし、アドリブ奏者の旅に終わりはありません。次のステップは、人間のプレイヤーとジャムセッションを行い、会話的な演奏スキルを磨くこと、完全なソロをトランスクリプションしてマクロレベルでの構造と発展を理解すること、そして録音、聴取、洗練というフィードバックループを継続することです。これこそが、成長のエンジンであり、音楽的探求の生涯にわたる喜びの源泉です。</p>
+            </div>
+
+        </main>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const links = document.querySelectorAll('.sidebar-link');
+    const sections = document.querySelectorAll('.content-section');
+
+    function updateContent(hash) {
+        hash = hash || window.location.hash || '#intro';
+
+        links.forEach(link => {
+            if (link.getAttribute('href') === hash) {
+                link.classList.add('active');
+            } else {
+                link.classList.remove('active');
+            }
+        });
+
+        sections.forEach(section => {
+            if ('#' + section.id === hash) {
+                section.classList.add('active');
+            } else {
+                section.classList.remove('active');
+            }
+        });
+    }
+
+    links.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetHash = this.getAttribute('href');
+            history.pushState(null, null, targetHash);
+            updateContent(targetHash);
+        });
+    });
+
+    window.addEventListener('popstate', () => {
+        updateContent(window.location.hash);
+    });
+
+    updateContent();
+
+    const practiceCtx = document.getElementById('practiceChart');
+    if (practiceCtx) {
+        new Chart(practiceCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['応用/実践', '新概念の学習', 'ウォームアップ/テクニック'],
+                datasets: [{
+                    label: '練習時間配分 (分)',
+                    data: [30, 20, 10],
+                    backgroundColor: ['#776B5D', '#E0C097', '#EEE2DE'],
+                    borderColor: '#FDFBF6',
+                    borderWidth: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: '1時間の練習計画'
+                    }
+                }
+            }
+        });
+    }
+
+    const notes = ['E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#'];
+    // FIX: Corrected tuning array for standard EADGBe tuning (from high e to low E)
+    const tuning = [0, 7, 3, 10, 5, 0]; 
+    const stringNames = ['e', 'B', 'G', 'D', 'A', 'E'];
+    const fretCount = 16;
+
+    function createFretboard(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = '';
+        const fretboard = document.createElement('div');
+        fretboard.className = 'fretboard';
+
+        for (let s = 0; s < 6; s++) {
+            const stringLabel = document.createElement('div');
+            stringLabel.className = 'string-label text-xs text-white';
+            stringLabel.textContent = stringNames[s];
+            fretboard.appendChild(stringLabel);
+
+            for (let f = 0; f <= fretCount; f++) {
+                const fret = document.createElement('div');
+                fret.className = f === 0 ? 'fret open' : 'fret';
+                fret.dataset.string = s;
+                fret.dataset.fret = f;
+                
+                const noteName = notes[(tuning[s] + f) % 12];
+                fret.dataset.note = noteName;
+
+                const noteMarker = document.createElement('div');
+                noteMarker.className = 'note';
+                fret.appendChild(noteMarker);
+                fretboard.appendChild(fret);
+
+                if (s === 5) { 
+                    if ([3, 5, 7, 9, 15].includes(f)) {
+                        const marker = document.createElement('div');
+                        marker.className = 'fret-marker';
+                        marker.textContent = f;
+                        fret.appendChild(marker);
+                    }
+                    if (f === 12) {
+                         const marker = document.createElement('div');
+                        marker.className = 'fret-marker';
+                        marker.textContent = f;
+                        fret.appendChild(marker);
+                    }
+                }
+            }
+        }
+        container.appendChild(fretboard);
+    }
+    
+    const aMinorPentatonic = {
+        notes: ['A', 'C', 'D', 'E', 'G'],
+        root: 'A',
+        positions: [
+            { name: 'Pos 1', frets: { E: [5, 8], A: [5, 7], D: [5, 7], G: [5, 7], B: [5, 8], e: [5, 8] } },
+            { name: 'Pos 2', frets: { E: [8, 10], A: [7, 10], D: [7, 10], G: [7, 9], B: [8, 10], e: [8, 10] } },
+            { name: 'Pos 3', frets: { E: [10, 12], A: [10, 12], D: [10, 12], G: [9, 12], B: [10, 13], e: [10, 12] } },
+            { name: 'Pos 4', frets: { E: [12, 15], A: [12, 15], D: [12, 14], G: [12, 14], B: [13, 15], e: [12, 15] } },
+            { name: 'Pos 5', frets: { E: [3, 5], A: [3, 5], D: [2, 5], G: [2, 5], B: [3, 5], e: [3, 5] } }
+        ]
+    };
+    
+    const chordTonesData = {
+        'A7': { root: 'A', notes: ['A', 'C#', 'E', 'G'] },
+        'D7': { root: 'D', notes: ['D', 'F#', 'A', 'C'] },
+        'E7': { root: 'E', notes: ['E', 'G#', 'B', 'D'] }
+    };
+
+    function setupPentatonicVisualizer() {
+        const containerId = 'penta-fretboard';
+        createFretboard(containerId);
+        const controlsContainer = document.getElementById('penta-controls');
+        if (!controlsContainer) return;
+
+        aMinorPentatonic.positions.forEach((pos, index) => {
+            const button = document.createElement('button');
+            button.textContent = pos.name;
+            button.className = 'px-3 py-1 bg-[#776B5D] text-white rounded hover:bg-[#3C3633] transition-colors';
+            button.addEventListener('click', () => {
+                const frets = document.querySelectorAll(`#${containerId} .fret`);
+                frets.forEach(fret => {
+                    const noteMarker = fret.querySelector('.note');
+                    const s = parseInt(fret.dataset.string);
+                    const f = parseInt(fret.dataset.fret);
+                    const stringName = stringNames[s];
+                    
+                    noteMarker.className = 'note';
+                    noteMarker.textContent = '';
+
+                    if (pos.frets[stringName] && pos.frets[stringName].includes(f)) {
+                        noteMarker.classList.add('visible');
+                        if (fret.dataset.note === aMinorPentatonic.root) {
+                            noteMarker.classList.add('root');
+                            noteMarker.textContent = 'R';
+                        } else {
+                            noteMarker.classList.add('scale-note');
+                        }
+                    }
+                });
+            });
+            controlsContainer.appendChild(button);
+        });
+    }
+
+    function setupChordToneVisualizer() {
+        const containerId = 'ct-fretboard';
+        createFretboard(containerId);
+        const pentaControls = document.getElementById('ct-penta-controls');
+        const chordControls = document.getElementById('ct-chord-controls');
+        if (!pentaControls || !chordControls) return;
+
+        let activePosIndex = 0;
+        let activeChord = 'A7';
+
+        function updateChordToneView() {
+            const frets = document.querySelectorAll(`#${containerId} .fret`);
+            const pos = aMinorPentatonic.positions[activePosIndex];
+            const currentChord = chordTonesData[activeChord];
+            const currentChordTones = currentChord.notes;
+            const currentChordRoot = currentChord.root;
+            
+            frets.forEach(fret => {
+                const noteMarker = fret.querySelector('.note');
+                const s = parseInt(fret.dataset.string);
+                const f = parseInt(fret.dataset.fret);
+                const stringName = stringNames[s];
+                const noteName = fret.dataset.note;
+
+                noteMarker.className = 'note';
+                noteMarker.textContent = '';
+
+                if (pos.frets[stringName] && pos.frets[stringName].includes(f)) {
+                    noteMarker.classList.add('visible');
+
+                    if (noteName === currentChordRoot) {
+                        noteMarker.classList.add('root');
+                        noteMarker.textContent = 'R';
+                    } else if (currentChordTones.includes(noteName)) {
+                        noteMarker.classList.add('chord-tone');
+                    } else {
+                        noteMarker.classList.add('scale-note');
+                    }
+                }
+            });
+        }
+
+        aMinorPentatonic.positions.forEach((pos, index) => {
+            const button = document.createElement('button');
+            button.textContent = pos.name;
+            button.className = 'px-3 py-1 bg-[#776B5D] text-white rounded hover:bg-[#3C3633] transition-colors';
+            button.addEventListener('click', () => {
+                activePosIndex = index;
+                updateChordToneView();
+            });
+            pentaControls.appendChild(button);
+        });
+
+        Object.keys(chordTonesData).forEach(chordName => {
+            const button = document.createElement('button');
+            button.textContent = chordName;
+            button.className = 'px-3 py-1 bg-[#A0937D] text-white rounded hover:bg-[#3C3633] transition-colors';
+            button.addEventListener('click', () => {
+                activeChord = chordName;
+                updateChordToneView();
+            });
+            chordControls.appendChild(button);
+        });
+
+        updateChordToneView();
+    }
+
+    if (document.getElementById('penta-fretboard')) {
+        setupPentatonicVisualizer();
+    }
+    if (document.getElementById('ct-fretboard')) {
+        setupChordToneVisualizer();
+    }
+});
+</script>
+
+</body>
+</html>
