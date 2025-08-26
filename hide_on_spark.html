@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>hideサウンド・トーンガイド for Spark</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony (Warm Neutrals with Muted Red Accent) -->
+    <!-- Application Structure Plan: A dashboard-style SPA centered on four main tone selections (Clean, Crunch, Drive, High-Gain). Clicking a tone dynamically updates a central content area, which uses interactive visualizations (Chart.js for amp settings, HTML/CSS for signal chain) to display the detailed recipe. This task-oriented design is chosen over a linear document scroll to allow users to quickly compare and access the core information (the sound recipes) directly, which is the primary goal of the source report. Supporting contextual information is placed in collapsible sections below to avoid clutter. -->
+    <!-- Visualization & Content Choices: Report Info: Amp Settings -> Goal: Make settings intuitive -> Viz: Chart.js Horizontal Bar Chart -> Interaction: Updates on tone selection -> Justification: More engaging and easier to parse at a glance than a text list of numbers. Report Info: Signal Chain -> Goal: Show effect order -> Viz: HTML/CSS Flexbox Diagram -> Interaction: Hover for details (optional) -> Justification: Clear, visual representation of flow. Report Info: Gear Matrix -> Goal: Reference -> Viz: HTML Table -> Interaction: Filter/Search -> Justification: Standard, effective for tabular data. CONFIRMATION: NO SVG/Mermaid used. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            background-color: #FDFBF8;
+            color: #4B4B4B;
+        }
+        .tone-button {
+            transition: all 0.3s ease;
+            transform: scale(1);
+        }
+        .tone-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .tone-button.active {
+            background-color: #C53030;
+            color: #FFFFFF;
+            box-shadow: 0 10px 15px -3px rgba(197, 48, 48, 0.4), 0 4px 6px -2px rgba(197, 48, 48, 0.2);
+            transform: scale(1.05);
+        }
+        .content-card {
+            background-color: #FFFFFF;
+            border: 1px solid #EAEAEA;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 40vh;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .signal-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-weight: bold;
+            font-size: 0.875rem;
+            text-align: center;
+        }
+        .signal-arrow {
+            font-size: 1.5rem;
+            color: #A0A0A0;
+            margin: 0 0.5rem;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto px-4 py-8 md:py-12">
+        
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-bold text-red-800 tracking-tight">Sonic Psychedelism</h1>
+            <p class="mt-2 text-lg text-gray-600">Positive Grid Sparkでhideのサウンドを構築するインタラクティブガイド</p>
+        </header>
+
+        <main>
+            <section id="tone-selector" class="mb-10">
+                <h2 class="text-2xl font-bold text-center mb-6">探求したいサウンドを選んでください</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 max-w-4xl mx-auto">
+                    <button data-tone="clean" class="tone-button active text-lg font-bold py-4 px-2 rounded-lg shadow-md bg-white border border-gray-200">
+                        <span class="text-2xl">💎</span><br>クリスタル・クリーン
+                    </button>
+                    <button data-tone="crunch" class="tone-button text-lg font-bold py-4 px-2 rounded-lg shadow-md bg-white border border-gray-200">
+                        <span class="text-2xl">🔥</span><br>アグレッシブ・クランチ
+                    </button>
+                    <button data-tone="drive" class="tone-button text-lg font-bold py-4 px-2 rounded-lg shadow-md bg-white border border-gray-200">
+                        <span class="text-2xl">🚀</span><br>シアリング・ドライブ
+                    </button>
+                    <button data-tone="crushing" class="tone-button text-lg font-bold py-4 px-2 rounded-lg shadow-md bg-white border border-gray-200">
+                        <span class="text-2xl">💀</span><br>クラッシング・ハイゲイン
+                    </button>
+                </div>
+            </section>
+
+            <section id="tone-details" class="content-card p-6 md:p-8">
+                <div id="display-area">
+                    <!-- JSによって動的にコンテンツが挿入されます -->
+                </div>
+            </section>
+            
+            <section id="philosophy" class="mt-12">
+                 <h2 class="text-3xl font-bold text-center mb-6">サウンドの解剖学</h2>
+                 <div class="max-w-4xl mx-auto space-y-8">
+                    <div class="content-card p-6">
+                        <h3 class="text-xl font-bold mb-2">コア哲学：整理されたカオス</h3>
+                        <p class="text-gray-700">hideのサウンドは、生々しいロックのアグレッション、インダストリアルミュージックの機械的な精度、そしてJ-POPのキャッチーなメロディセンスが共存する「整理されたカオス」です。深く歪んだリフの中にクリアなトーンが挟み込まれ、予測不能なエフェクトがサイケデリックな彩りを加えます。この多様性と絶妙なバランス感覚が、hideサウンドの根幹をなす哲学です。</p>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div class="content-card p-6">
+                            <h3 class="text-xl font-bold mb-2">ギター：擬態するレスポール</h3>
+                            <p class="text-gray-700">彼の愛用したモッキンバードモデルは、「メイプルトップ/マホガニーバック」というレスポールと同一のボディ構造を持ちます。これにより、見た目とは裏腹に、太くミッドレンジに焦点を当てた豊かなサステインを持つトーンがサウンドの根源となっています。</p>
+                        </div>
+                        <div class="content-card p-6">
+                            <h3 class="text-xl font-bold mb-2">アンプの二元論</h3>
+                            <p class="text-gray-700">サウンドは二つの系統に分類できます。一つはMarshall系の持つダイナミックな「英国の咆哮」。もう一つはMesa/Boogie系が放つ、モダンでタイトな「米国の業火」です。この二つのキャラクターを理解し使い分けることが鍵となります。</p>
+                        </div>
+                    </div>
+                 </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        const toneData = {
+            clean: {
+                title: 'クリスタル・クリーン',
+                concept: '「Hi-Ho」&「Good Bye」',
+                description: '楽曲のイントロやブレイクダウンで使用される、広がりがあり、コーラスが深くかかった幻想的なクリーントーンを再現します。',
+                signalChain: [
+                    { name: 'Noise Gate', type: 'gate' },
+                    { name: 'LA Comp', type: 'comp' },
+                    { name: 'Silver 120', type: 'amp' },
+                    { name: 'Cloner Chorus', type: 'mod' },
+                    { name: 'Digital Delay', type: 'delay' },
+                    { name: 'Plate Rich', type: 'reverb' }
+                ],
+                amp: {
+                    model: 'Silver 120',
+                    settings: { 'Gain': 2.0, 'Bass': 5.5, 'Mid': 6.0, 'Treble': 6.5, 'Master': 7.0 },
+                },
+                effects: [
+                    { name: 'LA Comp', settings: 'Threshold: -25dB, Compression: 3.5' },
+                    { name: 'Cloner Chorus', settings: 'Depth: 6.0, Rate: 4.5, Mix: 50%' },
+                    { name: 'Digital Delay', settings: 'Feedback: 30%, Time: 420ms, Mix: 25%' },
+                    { name: 'Plate Rich Reverb', settings: 'Mix: 35%' }
+                ]
+            },
+            crunch: {
+                title: 'アグレッシブ・クランチ',
+                concept: '「Sadistic Desire」& 初期X',
+                description: '初期X JAPANの楽曲に聴かれる、クラシックなブリティッシュロックに根差した、生々しくバイト感のあるブレイクアップ寸前のトーン。',
+                signalChain: [
+                    { name: 'Noise Gate', type: 'gate' },
+                    { name: 'Plexiglas', type: 'amp' },
+                    { name: 'Guitar EQ', type: 'mod' },
+                    { name: 'Hall Natural', type: 'reverb' }
+                ],
+                amp: {
+                    model: 'Plexiglas',
+                    settings: { 'Gain': 6.5, 'Bass': 6.0, 'Mid': 7.0, 'Treble': 7.0, 'Presence': 6.0, 'Master': 6.0 },
+                },
+                effects: [
+                    { name: 'Guitar EQ', settings: '800Hzと1.6kHz周辺をわずかにブーストし、バイト感を加えます。' },
+                    { name: 'Hall Natural Reverb', settings: 'Mix: 20%' }
+                ]
+            },
+            drive: {
+                title: 'シアリング・ドライブ',
+                concept: '「Celebration」&「Joker」',
+                description: 'hideの象徴とも言える、タイトで飽和感のあるリード/リズムサウンド。アンプをブーストすることで「形成」されたゲインです。',
+                signalChain: [
+                    { name: 'Noise Gate', type: 'gate' },
+                    { name: 'Over Drive', type: 'drive' },
+                    { name: 'YJM100', type: 'amp' },
+                    { name: 'Digital Delay', type: 'delay' },
+                    { name: 'Hall Medium', type: 'reverb' }
+                ],
+                amp: {
+                    model: 'YJM100',
+                    settings: { 'Gain': 7.5, 'Bass': 5.0, 'Mid': 8.0, 'Treble': 6.5, 'Presence': 6.0, 'Master': 5.0 },
+                },
+                effects: [
+                    { name: 'Over Drive', settings: 'Drive: 1.5, Tone: 6.0, Level: 9.0 (最重要：Levelでアンプをプッシュ)' }
+                ]
+            },
+            crushing: {
+                title: 'クラッシング・ハイゲイン',
+                concept: '「Doubt」&「Pose」',
+                description: 'hideのソロワークにおける、モダンでパーカッシブ、そして深く飽和したメタルサウンド。ドンシャリサウンドが基本です。',
+                signalChain: [
+                    { name: 'Noise Gate', type: 'gate' },
+                    { name: 'Treadplate', type: 'amp' },
+                    { name: 'Guitar EQ', type: 'mod' },
+                    { name: 'Hall Medium', type: 'reverb' }
+                ],
+                amp: {
+                    model: 'Treadplate',
+                    settings: { 'Gain': 9.0, 'Bass': 7.0, 'Mid': 4.0, 'Treble': 6.0, 'Presence': 5.0, 'Master': 6.0 },
+                },
+                effects: [
+                    { name: 'Noise Gate', settings: 'Threshold: -45dB, Decay: 150ms (必須)' },
+                    { name: 'Guitar EQ', settings: 'アンプ後段で500Hz-750Hzをカットし、ドンシャリを強調。' }
+                ]
+            }
+        };
+
+        const displayArea = document.getElementById('display-area');
+        const toneButtons = document.querySelectorAll('.tone-button');
+        let currentTone = 'clean';
+        let ampChart = null;
+
+        function getSignalItemColor(type) {
+            switch (type) {
+                case 'amp': return 'bg-red-200 text-red-800';
+                case 'drive':
+                case 'comp': return 'bg-yellow-200 text-yellow-800';
+                case 'mod': return 'bg-blue-200 text-blue-800';
+                case 'delay': return 'bg-green-200 text-green-800';
+                case 'reverb': return 'bg-indigo-200 text-indigo-800';
+                default: return 'bg-gray-200 text-gray-800';
+            }
+        }
+
+        function updateDisplay(toneKey) {
+            const data = toneData[toneKey];
+            if (!data) return;
+
+            const signalChainHTML = data.signalChain.map((item, index) => `
+                <div class="signal-item ${getSignalItemColor(item.type)}">${item.name}</div>
+                ${index < data.signalChain.length - 1 ? '<div class="signal-arrow">→</div>' : ''}
+            `).join('');
+
+            const effectsHTML = data.effects.map(effect => `
+                <div class="bg-gray-50 p-4 rounded-lg border">
+                    <h4 class="font-bold text-gray-800">${effect.name}</h4>
+                    <p class="text-sm text-gray-600">${effect.settings}</p>
+                </div>
+            `).join('');
+
+            displayArea.innerHTML = `
+                <div class="text-center mb-6">
+                    <h2 class="text-3xl font-bold">${data.title}</h2>
+                    <p class="text-md text-gray-500 font-semibold">${data.concept}</p>
+                    <p class="mt-2 text-gray-700 max-w-2xl mx-auto">${data.description}</p>
+                </div>
+                
+                <div class="mb-8">
+                    <h3 class="text-xl font-bold mb-4 text-center">シグナルチェーン</h3>
+                    <div class="flex flex-wrap items-center justify-center">${signalChainHTML}</div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <h3 class="text-xl font-bold mb-4 text-center">アンプセッティング: ${data.amp.model}</h3>
+                        <div class="chart-container">
+                            <canvas id="ampSettingsChart"></canvas>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold mb-4 text-center">エフェクト詳細</h3>
+                        <div class="space-y-3">${effectsHTML}</div>
+                    </div>
+                </div>
+            `;
+
+            createOrUpdateAmpChart(data.amp.settings);
+        }
+
+        function createOrUpdateAmpChart(settings) {
+            if (ampChart) {
+                ampChart.destroy();
+            }
+            
+            const ctx = document.getElementById('ampSettingsChart').getContext('2d');
+            const labels = Object.keys(settings);
+            const data = Object.values(settings);
+
+            ampChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Value',
+                        data: data,
+                        backgroundColor: 'rgba(197, 48, 48, 0.6)',
+                        borderColor: 'rgba(197, 48, 48, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 10
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            enabled: true,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.raw.toFixed(1);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        toneButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const toneKey = button.dataset.tone;
+                currentTone = toneKey;
+                
+                toneButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                
+                updateDisplay(toneKey);
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDisplay(currentTone);
+        });
+
+    </script>
+</body>
+</html>
