@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ふるふる科学！フルーツと牛乳で作る「魔法の層になるプリン」自由研究レポート</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Pastel Kitchen -->
+    <!-- Application Structure Plan: A single-page navigation structure with five sections: Introduction, Science Concepts (interactive cards), The Lab (clickable experiment glasses), Results Summary (interactive bar chart), and Analysis (accordion). This structure deconstructs the linear report into interactive, thematic modules, allowing users to explore non-linearly and actively engage with the content, which is more effective for learning and retention than passive reading. -->
+    <!-- Visualization & Content Choices: 1. Science Concepts: Report Info -> Explain casein, acid, pH. Goal -> Inform. Method -> Interactive HTML cards. Interaction -> Click to reveal text. Justification -> Breaks down complex science into digestible, user-controlled chunks. Library -> Vanilla JS. 2. Experiment Results: Report Info -> 5 experiment outcomes. Goal -> Compare. Method -> Interactive Bar Chart. Interaction -> Hover/click for details. Justification -> Visually quantifies the qualitative "firmness" result, making comparison instant and clear. Library -> Chart.js. 3. Analysis: Report Info -> 3 main discussion points. Goal -> Inform. Method -> Accordion. Interaction -> Click to expand. Justification -> Organizes detailed explanations cleanly. Library -> Vanilla JS. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            background-color: #FFFBF5;
+            color: #5C4033;
+        }
+        .nav-button {
+            transition: all 0.3s ease;
+        }
+        .nav-button.active {
+            background-color: #E6A4B4;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        .interactive-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .interactive-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-out;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-5xl">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-[#D48166]">ふるふる科学！インタラクティブ自由研究</h1>
+            <p class="text-lg md:text-xl mt-2 text-[#8B5E34]">フルーツと牛乳で作る「魔法の層になるプリン」</p>
+        </header>
+
+        <nav class="flex flex-wrap justify-center gap-2 md:gap-4 mb-8">
+            <button data-target="intro" class="nav-button active text-sm md:text-base font-bold py-2 px-4 rounded-full bg-white shadow-md">はじめに</button>
+            <button data-target="science" class="nav-button text-sm md:text-base font-bold py-2 px-4 rounded-full bg-white shadow-md">科学のヒミツ</button>
+            <button data-target="lab" class="nav-button text-sm md:text-base font-bold py-2 px-4 rounded-full bg-white shadow-md">実験室</button>
+            <button data-target="results" class="nav-button text-sm md:text-base font-bold py-2 px-4 rounded-full bg-white shadow-md">結果のまとめ</button>
+            <button data-target="analysis" class="nav-button text-sm md:text-base font-bold py-2 px-4 rounded-full bg-white shadow-md">わかったこと</button>
+        </nav>
+
+        <main id="main-content">
+            <section id="intro" class="content-section active p-6 bg-white rounded-2xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-4 text-[#D48166]">この研究を始めたきっかけ</h2>
+                <p class="text-base leading-relaxed">夏休みに飲んだイチゴミルクが、いつもより少しとろっとしていた。「ただ混ぜただけなのに、どうしてだろう？」という小さな疑問から、この研究は始まりました。果物と牛乳を混ぜると起きる特別な化学反応を利用して、ジュースとミルクがきれいな層になる、魔法みたいなプリン作りに挑戦します！このウェブサイトでは、その実験の過程と発見を、楽しくインタラクティブに紹介します。</p>
+            </section>
+
+            <section id="science" class="content-section p-6 bg-white rounded-2xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-4 text-center text-[#D48166]">牛乳が固まるヒミツ</h2>
+                <p class="text-center mb-6">プリンが固まるのには、科学の力が隠されています。下のカードをクリックして、３つのキーワードの謎を解き明かそう！</p>
+                <div class="grid md:grid-cols-3 gap-6">
+                    <div class="interactive-card cursor-pointer p-6 bg-[#F9F1E7] rounded-xl text-center" onclick="toggleCard(this)">
+                        <h3 class="text-xl font-bold mb-2">① カゼインくん</h3>
+                        <div class="accordion-content">
+                            <p class="text-left mt-4">牛乳のたんぱく質の約8割を占める成分。普段はマイナスの電気をまとってお互いに反発しあっているので、牛乳の中でバラバラに浮かんでいます。</p>
+                        </div>
+                    </div>
+                    <div class="interactive-card cursor-pointer p-6 bg-[#F9F1E7] rounded-xl text-center" onclick="toggleCard(this)">
+                        <h3 class="text-xl font-bold mb-2">② 酸の魔法</h3>
+                        <div class="accordion-content">
+                            <p class="text-left mt-4">イチゴやレモンに含まれる「酸」は、カゼインくんのマイナスの電気を打ち消す力があります。電気がなくなると、カゼインくんたちは集まって固まり始めます。これが牛乳が固まる正体です。</p>
+                        </div>
+                    </div>
+                    <div class="interactive-card cursor-pointer p-6 bg-[#F9F1E7] rounded-xl text-center" onclick="toggleCard(this)">
+                        <h3 class="text-xl font-bold mb-2">③ pHって何？</h3>
+                        <div class="accordion-content">
+                            <p class="text-left mt-4">酸の強さを表す点数のようなもの。数字が小さいほど酸っぱく、力が強いことを意味します。牛乳のカゼインは、pHが4.6くらいに下がると固まり始めます。</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="lab" class="content-section p-6 bg-white rounded-2xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-4 text-center text-[#D48166]">フルーツミルクプリン大作戦！</h2>
+                <p class="text-center mb-6">5種類のプリンを作って、結果を比較しました。気になるグラスをクリックして、予想と実際の結果を見てみよう！</p>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+                </div>
+                <div id="lab-details" class="mt-6 p-6 bg-[#F9F1E7] rounded-xl hidden">
+                    <h3 id="lab-title" class="text-xl font-bold mb-2"></h3>
+                    <p class="font-semibold">【わたしの予想】</p>
+                    <p id="lab-prediction" class="mb-4"></p>
+                    <p class="font-semibold">【実際の結果】</p>
+                    <p id="lab-result" class="mb-2"></p>
+                    <p id="lab-observation"></p>
+                </div>
+            </section>
+
+            <section id="results" class="content-section p-6 bg-white rounded-2xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-4 text-center text-[#D48166]">実験結果をグラフで見てみよう</h2>
+                <p class="text-center mb-6">プリンがどれくらい固まったかをグラフにしました。棒が長いほど、しっかり固まって層ができたことを表しています。棒にマウスを合わせると詳しい情報が見られます。</p>
+                <div class="chart-container">
+                    <canvas id="resultsChart"></canvas>
+                </div>
+            </section>
+
+            <section id="analysis" class="content-section p-6 bg-white rounded-2xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-4 text-center text-[#D48166]">なぜ？を考えよう - わかったことと考察</h2>
+                <div id="analysis-container" class="space-y-4">
+                </div>
+            </section>
+        </main>
+
+    </div>
+
+    <script>
+        const experimentData = [
+            {
+                id: 1,
+                name: "イチゴ + レモン汁あり",
+                prediction: "イチゴの酸とレモンの強い酸で、カゼインがしっかり固まり、きれいな2層に分かれそう。一番固いプリンになると思う。",
+                result: "しっかり固まった！",
+                observation: "下のミルク層と上の透明な層がはっきりと分かれた。ふるふるとした食感で、甘酸っぱくて美味しい。",
+                firmness: 5,
+                color: 'rgba(239, 68, 68, 0.7)'
+            },
+            {
+                id: 2,
+                name: "イチゴ + レモン汁なし",
+                prediction: "イチゴだけの酸でも固まるはず。レモン汁ありよりは少しゆるいかもしれないけれど、層にはなると思う。",
+                result: "少し固まった！",
+                observation: "全体的にとろみがつき、うっすらと層ができた。レモン汁ありよりはゆるい。",
+                firmness: 3,
+                color: 'rgba(251, 113, 133, 0.7)'
+            },
+            {
+                id: 3,
+                name: "リンゴ + レモン汁あり",
+                prediction: "リンゴも酸っぱい果物なので、レモン汁の助けがあればイチゴと同じように固まって層になりそう。",
+                result: "まあまあ固まった！",
+                observation: "イチゴほどではないが、ミルクが固まり層ができた。リンゴのさっぱりした味。",
+                firmness: 4,
+                color: 'rgba(250, 204, 21, 0.7)'
+            },
+            {
+                id: 4,
+                name: "リンゴ + レモン汁なし",
+                prediction: "リンゴの酸はイチゴより弱いかもしれないので、あまり固まらず、層もできないかもしれない。",
+                result: "ほとんど固まらなかった…",
+                observation: "層はできず、ただのリンゴ牛乳のようだった。とろみもほとんどない。",
+                firmness: 1,
+                color: 'rgba(253, 224, 71, 0.7)'
+            },
+            {
+                id: 5,
+                name: "キウイ + レモン汁あり",
+                prediction: "キウイは酸っぱいので、レモン汁も加えたら、しっかり固まって層になるはず！",
+                result: "大失敗！まったく固まらなかった…",
+                observation: "どろどろの液体のまま。時間が経っても固まる気配がなかった。",
+                firmness: 0,
+                color: 'rgba(5, 150, 105, 0.7)'
+            }
+        ];
+
+        const analysisData = [
+            {
+                title: "考察1: レモン汁のパワーはすごかった！",
+                content: "イチゴとリンゴのどちらの場合も、レモン汁を入れたプリンの方がしっかり固まり、層もはっきり分かれました。これは、レモンの強い酸が牛乳のpHを一気に下げ、カゼインの凝固反応を強く進めたからだと考えられます。"
+            },
+            {
+                title: "考察2: 果物の種類で固まり方が違ったのはなぜ？",
+                content: "レモン汁なしの場合、イチゴは固まりましたがリンゴは固まりませんでした。これは、果物に含まれる酸の強さや量が違うためです。イチゴの酸は、単体でも牛乳を固めるのに十分な力を持っていました。"
+            },
+            {
+                title: "考察3: 大失敗？キウイプリンが固まらなかった謎！",
+                content: "一番固まると思っていたキウイが固まらなかったのは、キウイに含まれる「たんぱく質分解酵素」が原因でした。この酵素が、プリンを固めるためのゼラチン（たんぱく質）をバラバラに分解してしまったのです。酸で固める力より、酵素が壊す力の方が勝ってしまったと考えられます。予想外の失敗から、新しい科学の働きを発見できました！"
+            }
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const navButtons = document.querySelectorAll('.nav-button');
+            const contentSections = document.querySelectorAll('.content-section');
+            const labGrid = document.querySelector('#lab .grid');
+            const analysisContainer = document.getElementById('analysis-container');
+
+            function showSection(targetId) {
+                contentSections.forEach(section => {
+                    section.classList.toggle('active', section.id === targetId);
+                });
+                navButtons.forEach(button => {
+                    button.classList.toggle('active', button.dataset.target === targetId);
+                });
+            }
+
+            navButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    showSection(button.dataset.target);
+                });
+            });
+            
+            experimentData.forEach(exp => {
+                const glassDiv = document.createElement('div');
+                glassDiv.className = 'interactive-card cursor-pointer p-2 rounded-lg';
+                glassDiv.innerHTML = `<div class="w-16 h-24 mx-auto rounded-t-lg border-2 border-gray-300 flex items-end" style="background-color: ${exp.color}20;">
+                    <div class="h-1/2 w-full" style="background-color: ${exp.color}; opacity: ${exp.firmness / 5 * 0.8 + 0.2};"></div>
+                </div>
+                <p class="mt-2 text-xs md:text-sm font-semibold">${exp.name}</p>`;
+                glassDiv.addEventListener('click', () => showLabDetails(exp.id));
+                labGrid.appendChild(glassDiv);
+            });
+
+            analysisData.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'border border-gray-200 rounded-lg';
+                div.innerHTML = `
+                    <button class="w-full text-left p-4 bg-[#F9F1E7] hover:bg-[#f2e8da] rounded-lg font-bold flex justify-between items-center">
+                        <span>${item.title}</span>
+                        <span class="transform transition-transform duration-300">▼</span>
+                    </button>
+                    <div class="accordion-content">
+                        <p class="p-4">${item.content}</p>
+                    </div>
+                `;
+                div.querySelector('button').addEventListener('click', (e) => {
+                    const content = e.currentTarget.nextElementSibling;
+                    const icon = e.currentTarget.querySelector('span:last-child');
+                    if (content.style.maxHeight) {
+                        content.style.maxHeight = null;
+                        icon.style.transform = 'rotate(0deg)';
+                    } else {
+                        content.style.maxHeight = content.scrollHeight + "px";
+                        icon.style.transform = 'rotate(180deg)';
+                    }
+                });
+                analysisContainer.appendChild(div);
+            });
+
+            const ctx = document.getElementById('resultsChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: experimentData.map(d => d.name.split(' ')),
+                    datasets: [{
+                        label: '固まり具合 (0-5)',
+                        data: experimentData.map(d => d.firmness),
+                        backgroundColor: experimentData.map(d => d.color),
+                        borderColor: experimentData.map(d => d.color.replace('0.7', '1')),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 5,
+                            ticks: {
+                                stepSize: 1,
+                                callback: function(value) {
+                                    const labels = ['液状', '少しとろみ', 'ゆるい', 'ふるふる', 'まあまあ固い', 'しっかり固い'];
+                                    return labels[value];
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.x !== null) {
+                                        const firmnessLevel = ['液状', '少しとろみ', 'ゆるい', 'ふるふる', 'まあまあ固い', 'しっかり固い'];
+                                        label += `${context.parsed.x} (${firmnessLevel[context.parsed.x]})`;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+
+        function toggleCard(cardElement) {
+            const content = cardElement.querySelector('.accordion-content');
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        }
+
+        function showLabDetails(id) {
+            const detailsView = document.getElementById('lab-details');
+            const data = experimentData.find(exp => exp.id === id);
+            
+            document.getElementById('lab-title').textContent = data.name;
+            document.getElementById('lab-prediction').textContent = data.prediction;
+            document.getElementById('lab-result').textContent = data.result;
+            document.getElementById('lab-observation').textContent = data.observation;
+            
+            detailsView.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
