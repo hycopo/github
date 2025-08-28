@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ja" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sparkシリーズ ダイレクトサウンド比較</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Studio Warmth -->
+    <!-- Application Structure Plan: The SPA is designed as a top-down narrative journey. It starts with the main conclusion in a hero section to immediately answer the user's primary question. It then presents a high-level "Generational Divide" comparison to establish the core concept. The heart of the app is an "Interactive Model Explorer" allowing non-linear exploration of each amp. This is followed by specific "Deep Dive" comparisons for the most common user questions (Gen 1 vs Gen 2, LIVE vs EDGE). Finally, a "Which Spark is for You?" section provides use-case-based recommendations, interactively highlighting the best model. This structure guides the user from a broad conclusion to specific, personalized insights, making complex information digestible and easy to navigate. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: 16-bit vs 24-bit audio interface. Goal: Compare data fidelity. Viz: Chart.js Bar Chart ("オーディオ忠実度：世代間の飛躍"). Interaction: Static visual. Justification: A bar chart provides a stark, immediate visual representation of the massive difference in dynamic range (96dB vs 144dB), which is more impactful than text alone. Library: Chart.js.
+        - Report Info: All model specs. Goal: Inform & Compare. Viz: Dynamic HTML content blocks within the "Interactive Model Explorer". Interaction: User clicks model buttons to update a central display card. Justification: This allows for easy, self-directed comparison without cluttering the UI, letting users focus on one model at a time. Method: Vanilla JS DOM manipulation.
+        - Report Info: LIVE vs EDGE features. Goal: Compare. Viz: Styled HTML table. Interaction: Static. Justification: A table is the clearest way to present a direct, feature-by-feature comparison of two closely related products. Method: HTML/Tailwind.
+        - Report Info: Use-case recommendations. Goal: Organize & Guide. Viz: Interactive buttons linked to model cards. Interaction: Clicking a use-case button highlights the recommended model and scrolls to it. Justification: This creates a task-oriented "wizard" that actively guides the user to the most relevant information based on their needs. Method: Vanilla JS.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #FDFBF5;
+            color: #402E32;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .highlight {
+            box-shadow: 0 0 0 3px #D97706;
+            transform: scale(1.02);
+            transition: all 0.3s ease-in-out;
+        }
+        .nav-link {
+            transition: color 0.2s, border-bottom-color 0.2s;
+        }
+        .nav-link:hover {
+            color: #D97706;
+            border-bottom-color: #D97706;
+        }
+        .active-model-btn {
+            background-color: #D97706 !important;
+            color: #FFFFFF !important;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-[#A6634E]">Spark サウンド分析</h1>
+            <div class="hidden md:flex space-x-8">
+                <a href="#generation" class="nav-link text-gray-600 border-b-2 border-transparent pb-1">世代間の違い</a>
+                <a href="#explorer" class="nav-link text-gray-600 border-b-2 border-transparent pb-1">モデル比較</a>
+                <a href="#deepdive" class="nav-link text-gray-600 border-b-2 border-transparent pb-1">詳細分析</a>
+                <a href="#recommend" class="nav-link text-gray-600 border-b-2 border-transparent pb-1">おすすめ診断</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-6 py-12">
+        <section id="hero" class="text-center mb-20">
+            <h2 class="text-4xl md:text-5xl font-extrabold mb-4 text-[#A6634E]">Sparkのライン出力サウンドは、<br class="md:hidden">モデルによって異なります。</h2>
+            <p class="text-lg md:text-xl max-w-3xl mx-auto text-gray-700">Positive Grid Sparkシリーズのダイレクト出力サウンドは、全モデルで同じではありません。サウンドエンジンとオーディオ品質において、明確な「世代間の断絶」が存在します。このインタラクティブガイドで、どのSparkがあなたのニーズに最適かを見つけましょう。</p>
+        </section>
+
+        <section id="generation" class="mb-20">
+            <h3 class="text-3xl font-bold text-center mb-2 text-[#A6634E]">核心：二つの世代の物語</h3>
+            <p class="text-center text-gray-600 max-w-2xl mx-auto mb-12">Sparkシリーズは、音質の核となる技術が異なる2つの世代に分けられます。第1世代は革新的な練習ツールとして、第2世代はよりプロフェッショナルな音質を追求したツールとして進化しました。</p>
+            <div class="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+                <div class="bg-white rounded-xl shadow-lg p-8 border border-gray-200">
+                    <h4 class="text-2xl font-bold mb-4 text-center">第1世代 <span class="text-sm font-normal text-gray-500">(40, MINI, GO)</span></h4>
+                    <ul class="space-y-4 text-gray-700">
+                        <li class="flex items-start"><span class="text-amber-600 mr-3 mt-1">▶</span><div><strong class="font-semibold">トーンエンジン:</strong> BIAS Tone Engineを搭載。多彩なサウンドを提供。</div></li>
+                        <li class="flex items-start"><span class="text-amber-600 mr-3 mt-1">▶</span><div><strong class="font-semibold">オーディオ品質:</strong> 16-bit。練習には十分ですが、レコーディングではノイズが目立ちやすい。</div></li>
+                        <li class="flex items-start"><span class="text-amber-600 mr-3 mt-1">▶</span><div><strong class="font-semibold">サウンド特性:</strong> 低音が強調された「ブーミー」な傾向。内蔵スピーカーでの演奏に最適化されています。</div></li>
+                        <li class="flex items-start"><span class="text-amber-600 mr-3 mt-1">▶</span><div><strong class="font-semibold">出力端子:</strong> 1/8インチのヘッドホン/ライン兼用出力。</div></li>
+                    </ul>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-8 border-2 border-amber-500">
+                    <h4 class="text-2xl font-bold mb-4 text-center">第2世代 <span class="text-sm font-normal text-gray-500">(2, LIVE, EDGE)</span></h4>
+                    <ul class="space-y-4 text-gray-700">
+                        <li class="flex items-start"><span class="text-green-600 mr-3 mt-1">✔</span><div><strong class="font-semibold">トーンエンジン:</strong> HD Tone Engineに進化。よりクリアで忠実度の高いサウンド。</div></li>
+                        <li class="flex items-start"><span class="text-green-600 mr-3 mt-1">✔</span><div><strong class="font-semibold">オーディオ品質:</strong> 24-bit。プロのレコーディング標準に匹敵し、ノイズが少なくダイナミック。</div></li>
+                        <li class="flex items-start"><span class="text-green-600 mr-3 mt-1">✔</span><div><strong class="font-semibold">サウンド特性:</strong> バランスが取れ、クリアな音質。「ブーミー」さが解消され、ライン出力に最適化。</div></li>
+                        <li class="flex items-start"><span class="text-green-600 mr-3 mt-1">✔</span><div><strong class="font-semibold">出力端子:</strong> プロ仕様の1/4インチ・ステレオライン出力を搭載。</div></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="explorer" class="mb-20">
+            <h3 class="text-3xl font-bold text-center mb-2 text-[#A6634E]">インタラクティブ・モデルエクスプローラー</h3>
+            <p class="text-center text-gray-600 max-w-2xl mx-auto mb-12">下のボタンをクリックして、各モデルの詳細なスペックとサウンド特性を確認しましょう。世代間の違いや、各モデルのユニークな特徴が分かります。</p>
+            <div class="flex flex-wrap justify-center gap-2 md:gap-4 mb-8">
+                <button data-model="spark40" class="model-btn px-4 py-2 bg-gray-200 text-gray-800 rounded-full font-semibold transition">Spark 40</button>
+                <button data-model="sparkMini" class="model-btn px-4 py-2 bg-gray-200 text-gray-800 rounded-full font-semibold transition">Spark MINI</button>
+                <button data-model="sparkGo" class="model-btn px-4 py-2 bg-gray-200 text-gray-800 rounded-full font-semibold transition">Spark GO</button>
+                <button data-model="spark2" class="model-btn px-4 py-2 bg-amber-200 text-amber-800 rounded-full font-semibold transition">Spark 2</button>
+                <button data-model="sparkLive" class="model-btn px-4 py-2 bg-amber-200 text-amber-800 rounded-full font-semibold transition">Spark LIVE</button>
+                <button data-model="sparkEdge" class="model-btn px-4 py-2 bg-amber-200 text-amber-800 rounded-full font-semibold transition">Spark EDGE</button>
+            </div>
+            <div id="model-display" class="max-w-4xl mx-auto bg-white rounded-xl shadow-xl p-8 transition-all duration-500 min-h-[300px] border border-gray-200">
+            </div>
+        </section>
+
+        <section id="deepdive" class="mb-20">
+            <h3 class="text-3xl font-bold text-center mb-2 text-[#A6634E]">詳細分析：データで見る違い</h3>
+            <p class="text-center text-gray-600 max-w-2xl mx-auto mb-12">ここでは、特に重要な比較ポイントを掘り下げます。オーディオ品質の客観的なデータと、最新モデル間のコンセプトの違いを詳しく見ていきましょう。</p>
+            <div class="grid lg:grid-cols-2 gap-12">
+                <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-200">
+                    <h4 class="text-2xl font-bold mb-4 text-center">オーディオ忠実度：世代間の飛躍</h4>
+                    <p class="text-gray-600 mb-6 text-center">ダイレクトレコーディングの品質を決定づける最大の要因は、オーディオインターフェースのビット深度です。24-bitは16-bitに比べ、音の細かなニュアンスを捉える解像度が65,536倍から16,777,216倍へと飛躍的に向上し、ノイズフロアが劇的に低下します。</p>
+                    <div class="chart-container">
+                        <canvas id="bitDepthChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-200">
+                    <h4 class="text-2xl font-bold mb-4 text-center">頂上決戦：Spark LIVE vs EDGE</h4>
+                    <p class="text-gray-600 mb-6 text-center">共に第2世代の最高音質を誇る2モデルですが、コンセプトが異なります。LIVEはバンド対応のミニPA、EDGEは究極のポータブル・バスキングアンプです。</p>
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr>
+                                <th class="py-2 border-b-2 border-amber-500 font-semibold">機能</th>
+                                <th class="py-2 border-b-2 border-amber-500 font-semibold text-center">Spark LIVE</th>
+                                <th class="py-2 border-b-2 border-amber-500 font-semibold text-center">Spark EDGE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b"><td class="py-3 font-medium">コンセプト</td><td class="py-3 text-center">ミニPAシステム</td><td class="py-3 text-center">バスキングアンプ</td></tr>
+                            <tr class="border-b"><td class="py-3 font-medium">出力</td><td class="py-3 text-center">150W</td><td class="py-3 text-center">65W</td></tr>
+                            <tr class="border-b"><td class="py-3 font-medium">スピーカー</td><td class="py-3 text-center">ステレオ</td><td class="py-3 text-center">モノラル</td></tr>
+                            <tr class="border-b"><td class="py-3 font-medium">重量</td><td class="py-3 text-center">12 kg</td><td class="py-3 text-center">6.2 kg</td></tr>
+                            <tr class="border-b"><td class="py-3 font-medium">内蔵ルーパー</td><td class="py-3 text-center">なし</td><td class="py-3 text-center text-green-600 font-bold">あり</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="recommend">
+            <h3 class="text-3xl font-bold text-center mb-2 text-[#A6634E]">あなたに最適なSparkは？</h3>
+            <p class="text-center text-gray-600 max-w-2xl mx-auto mb-12">あなたの主な使用目的に合わせて、最適なモデルを診断します。下のボタンからあなたの使い方に最も近いものを選んでください。該当するモデルがハイライトされます。</p>
+            <div class="flex flex-wrap justify-center gap-4">
+                <button data-usecase="recording" class="recommend-btn bg-white hover:bg-amber-100 text-amber-800 font-bold py-3 px-6 rounded-lg shadow-md transition">本格的な自宅レコーディング</button>
+                <button data-usecase="busking" class="recommend-btn bg-white hover:bg-amber-100 text-amber-800 font-bold py-3 px-6 rounded-lg shadow-md transition">ソロパフォーマンス／バスキング</button>
+                <button data-usecase="band" class="recommend-btn bg-white hover:bg-amber-100 text-amber-800 font-bold py-3 px-6 rounded-lg shadow-md transition">バンドでの練習／小規模ライブ</button>
+                <button data-usecase="portable" class="recommend-btn bg-white hover:bg-amber-100 text-amber-800 font-bold py-3 px-6 rounded-lg shadow-md transition">手軽な練習と携帯性</button>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-gray-800 text-white mt-20">
+        <div class="container mx-auto px-6 py-4 text-center text-sm">
+            <p>このページは、公開情報に基づき作成された非公式の分析ガイドです。</p>
+            <p>&copy; 2025 Interactive Sound Analysis. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sparkModels = {
+                spark40: {
+                    name: 'Spark 40',
+                    generation: 1,
+                    title: '初代のスタンダードモデル',
+                    description: '革新的な練習機能で市場を切り開いたモデル。内蔵スピーカーで豊かなサウンドを提供しますが、ダイレクト出力は低音が強調される傾向があります。',
+                    specs: [
+                        { label: '世代', value: '第1世代' },
+                        { label: 'USBオーディオ', value: '16-bit / 48 kHz' },
+                        { label: 'サウンド特性', value: 'ブーミー、低音寄り' },
+                        { label: '最適な用途', value: '自宅での練習' }
+                    ],
+                    usecase: ['portable']
+                },
+                sparkMini: {
+                    name: 'Spark MINI',
+                    generation: 1,
+                    title: 'パワフルなポータブルアンプ',
+                    description: 'Spark 40のサウンドをコンパクトな筐体に凝縮。バッテリー駆動でどこでも練習可能。サウンドエンジンとオーディオ品質はSpark 40と共通です。',
+                    specs: [
+                        { label: '世代', value: '第1世代' },
+                        { label: 'USBオーディオ', value: '16-bit / 44.1 kHz' },
+                        { label: 'サウンド特性', value: 'ブーミー、低音寄り' },
+                        { label: '最適な用途', value: '携帯性を重視した練習' }
+                    ],
+                    usecase: ['portable']
+                },
+                sparkGo: {
+                    name: 'Spark GO',
+                    generation: 1,
+                    title: 'ポケットサイズの究極ツール',
+                    description: 'シリーズ最小・最軽量モデル。いつでもどこでもアイデアを形にできます。ダイレクトサウンドの品質は他の第1世代モデルと同等です。',
+                    specs: [
+                        { label: '世代', value: '第1世代' },
+                        { label: 'USBオーディオ', value: '16-bit / 44.1 kHz' },
+                        { label: 'サウンド特性', value: 'ブーミー、低音寄り' },
+                        { label: '最適な用途', value: '最高の携帯性' }
+                    ],
+                    usecase: ['portable']
+                },
+                spark2: {
+                    name: 'Spark 2',
+                    generation: 2,
+                    title: 'レコーディング品質の進化形',
+                    description: '第2世代への飛躍を象徴するモデル。HDトーンエンジンと24-bitオーディオにより、クリアでバランスの取れたダイレクトサウンドを実現。自宅レコーディングの品質を劇的に向上させます。',
+                    specs: [
+                        { label: '世代', value: '第2世代' },
+                        { label: 'USBオーディオ', value: '24-bit / 44.1 kHz' },
+                        { label: 'サウンド特性', value: 'クリア、バランス良好' },
+                        { label: '最適な用途', value: '本格的な自宅レコーディング' }
+                    ],
+                    usecase: ['recording']
+                },
+                sparkLive: {
+                    name: 'Spark LIVE',
+                    generation: 2,
+                    title: 'フルバンド対応のミニPAシステム',
+                    description: '150Wのパワフルなステレオサウンドで、バンド練習や小規模ライブにも対応。ギター、ボーカル、ベースなど多チャンネル入力が可能。シリーズ最高の忠実度と多機能性を誇ります。',
+                    specs: [
+                        { label: '世代', value: '第2世代' },
+                        { label: 'USBオーディオ', value: '24-bit / 48 kHz' },
+                        { label: 'サウンド特性', value: '非常にクリア、フラットな特性' },
+                        { label: '最適な用途', value: 'バンド練習、ライブ、多機能スタジオハブ' }
+                    ],
+                    usecase: ['band']
+                },
+                sparkEdge: {
+                    name: 'Spark EDGE',
+                    generation: 2,
+                    title: '究極のポータブル・バスキングアンプ',
+                    description: '第2世代の高音質を軽量な筐体で実現。内蔵ルーパーと多チャンネル入力で、ソロパフォーマンスやバスキングに最適。携帯性とプロ品質のサウンドを両立しています。',
+                    specs: [
+                        { label: '世代', value: '第2世代' },
+                        { label: 'USBオーディオ', value: '24-bit / 48 kHz' },
+                        { label: 'サウンド特性', value: 'クリア、パワフルなモノラル' },
+                        { label: '最適な用途', value: 'バスキング、ソロパフォーマンス' }
+                    ],
+                    usecase: ['busking']
+                }
+            };
+
+            const modelDisplay = document.getElementById('model-display');
+            const modelButtons = document.querySelectorAll('.model-btn');
+            const recommendButtons = document.querySelectorAll('.recommend-btn');
+
+            function updateDisplay(modelKey) {
+                const model = sparkModels[modelKey];
+                if (!model) return;
+
+                const specsHtml = model.specs.map(spec => `
+                    <div class="flex justify-between py-2 border-b border-gray-200">
+                        <span class="font-semibold text-gray-600">${spec.label}</span>
+                        <span class="text-right">${spec.value}</span>
+                    </div>
+                `).join('');
+
+                modelDisplay.innerHTML = `
+                    <div id="model-card-${modelKey}" class="transition-all duration-300">
+                        <h4 class="text-3xl font-bold mb-2">${model.name}</h4>
+                        <p class="text-amber-600 font-semibold mb-4">${model.title}</p>
+                        <p class="text-gray-700 mb-6">${model.description}</p>
+                        <div class="space-y-2">${specsHtml}</div>
+                    </div>
+                `;
+
+                modelButtons.forEach(btn => {
+                    btn.classList.remove('active-model-btn');
+                    if(btn.dataset.model === modelKey) {
+                        btn.classList.add('active-model-btn');
+                    }
+                });
+            }
+
+            modelButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const modelKey = button.dataset.model;
+                    updateDisplay(modelKey);
+                    
+                    document.querySelectorAll('[id^="model-card-"]').forEach(card => card.classList.remove('highlight'));
+                });
+            });
+
+            recommendButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const usecase = button.dataset.usecase;
+                    let targetModelKey = null;
+
+                    for (const key in sparkModels) {
+                        if (sparkModels[key].usecase.includes(usecase)) {
+                            targetModelKey = key;
+                            break; 
+                        }
+                    }
+
+                    if(usecase === 'portable'){
+                        targetModelKey = 'sparkMini';
+                    }
+
+                    if (targetModelKey) {
+                        updateDisplay(targetModelKey);
+                        const targetCard = document.getElementById(`model-card-${targetModelKey}`);
+                        if (targetCard) {
+                            // Ensure display is updated before scrolling
+                            setTimeout(() => {
+                                targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                targetCard.classList.add('highlight');
+                            }, 100);
+                        }
+                    }
+                });
+            });
+
+            const ctx = document.getElementById('bitDepthChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['第1世代 (16-bit)', '第2世代 (24-bit)'],
+                    datasets: [{
+                        label: '理論上のダイナミックレンジ (dB)',
+                        data: [96, 144],
+                        backgroundColor: [
+                            'rgba(234, 179, 8, 0.5)',
+                            'rgba(22, 163, 74, 0.5)'
+                        ],
+                        borderColor: [
+                            'rgba(234, 179, 8, 1)',
+                            'rgba(22, 163, 74, 1)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'ダイナミックレンジ (dB)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.raw} dB: より広いダイナミックレンジは、よりクリアでノイズの少ないサウンドを意味します。`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            updateDisplay('spark2');
+
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>
