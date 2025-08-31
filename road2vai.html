@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スティーヴ・ヴァイへの道 | 初心者からファン、そしてプレイヤーへ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Passion and Warfare (Light Beige, Dark Gray, Purple, Light Purple) -->
+    <!-- Application Structure Plan: A four-level, single-page vertical journey (Gateway, Discography, Techniques, Community). This step-by-step structure guides a novice user logically from initial discovery to deep engagement and practical application (learning to play). Interactive elements like album filters and a technique chart break down complex information into manageable, explorable pieces, which is more effective than a static list for a learning roadmap. -->
+    <!-- Visualization & Content Choices: Report Info: Vai's core techniques -> Goal: Organize learning path -> Viz/Presentation Method: Interactive Bubble Chart (Chart.js) and detail cards -> Interaction: Bubbles represent techniques, sized by frequency, plotted by difficulty vs. expressiveness. Clicking a bubble or card reveals a detailed description and practice advice. Justification: This visualizes the relationships between techniques, helping a student prioritize what to learn first, making the daunting task of learning Vai's style more approachable. Report Info: Vai's extensive discography -> Goal: Guide listening -> Viz/Presentation Method: Filterable grid of album covers -> Interaction: Users can filter by category (Solo, Early Career, etc.) and click for details. Justification: Prevents overwhelming a new listener by providing curated entry points into his catalog. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #f7f4f1;
+            color: #3d3a39;
+        }
+        .bg-primary { background-color: #6a3ab2; }
+        .bg-secondary { background-color: #eaddf7; }
+        .text-accent { color: #6a3ab2; }
+        .border-accent { border-color: #6a3ab2; }
+        .btn-primary {
+            background-color: #6a3ab2;
+            color: white;
+            transition: background-color 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: #583094;
+        }
+        .btn-secondary {
+            background-color: transparent;
+            color: #6a3ab2;
+            border: 2px solid #eaddf7;
+            transition: all 0.3s ease;
+        }
+        .btn-secondary.active, .btn-secondary:hover {
+            background-color: #eaddf7;
+            color: #3d3a39;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 400px;
+            max-height: 60vh;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 500px;
+            }
+        }
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+        .modal-content {
+            background-color: #f7f4f1;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            max-width: 90%;
+            width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .hide {
+            display: none;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-primary text-white shadow-md sticky top-0 z-40">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <h1 class="text-xl md:text-2xl font-bold font-['Roboto',sans-serif]">Steve Vai Roadmap</h1>
+            <div class="hidden md:flex space-x-4">
+                <a href="#level1" class="hover:text-secondary">Level 1: 発見</a>
+                <a href="#level2" class="hover:text-secondary">Level 2: 探求</a>
+                <a href="#level3" class="hover:text-secondary">Level 3: 実践</a>
+                <a href="#level4" class="hover:text-secondary">Level 4: コミュニティ</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-8">
+
+        <section id="level1" class="text-center py-16">
+            <h2 class="text-4xl md:text-5xl font-bold text-accent mb-4">Level 1: 異次元のギタリストとの遭遇</h2>
+            <p class="max-w-3xl mx-auto mb-8 text-lg">このセクションでは、まずスティーヴ・ヴァイがどのようなアーティストであるかを知ることから始めます。彼の音楽は単なるギタープレイに留まらず、作曲、パフォーマンス、そして哲学まで含んだ総合芸術です。彼の世界への扉を開ける、最も象徴的で聴きやすい代表曲から旅を始めましょう。</p>
+            
+            <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="text-2xl font-bold mb-2 text-accent">For the Love of God</h3>
+                    <p class="text-left">彼の代名詞とも言える一曲。感情の爆発と神がかったテクニックが融合したギターインストの金字塔。彼のメロディセンスと表現力の深さを知るには最適です。</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="text-2xl font-bold mb-2 text-accent">Tender Surrender</h3>
+                    <p class="text-left">ブルージーでセクシーな側面を堪能できる曲。超絶技巧だけでなく、歌心あふれるエモーショナルなプレイも彼の大きな魅力であることを教えてくれます。</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="text-2xl font-bold mb-2 text-accent">The Crying Machine</h3>
+                    <p class="text-left">キャッチーなリフとメロディが印象的な、比較的ストレートなロックチューン。彼の持つポップな感覚と、ライブでの盛り上がりを想像させる楽しさが詰まっています。</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="border-t-2 border-secondary my-16"></div>
+
+        <section id="level2" class="py-16">
+            <h2 class="text-4xl md:text-5xl font-bold text-accent text-center mb-4">Level 2: ヴァイ宇宙のディスコグラフィ探訪</h2>
+            <p class="max-w-3xl mx-auto mb-12 text-lg text-center">彼の音楽的宇宙は広大です。このセクションでは、彼のキャリアを形作った重要なアルバムを巡ります。下のボタンでカテゴリーを切り替えて、彼の音楽性の変遷を体験してください。各アルバムをクリックすると、詳細とおすすめの楽曲が表示されます。</p>
+
+            <div class="flex justify-center flex-wrap gap-2 mb-8" id="album-filters">
+                <button class="px-4 py-2 rounded-full btn-secondary active" data-filter="all">全て</button>
+                <button class="px-4 py-2 rounded-full btn-secondary" data-filter="essential">重要ソロ作</button>
+                <button class="px-4 py-2 rounded-full btn-secondary" data-filter="early">黎明期&バンド</button>
+                <button class="px-4 py-2 rounded-full btn-secondary" data-filter="recent">近年の作品</button>
+            </div>
+
+            <div id="album-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+            </div>
+        </section>
+        
+        <div class="border-t-2 border-secondary my-16"></div>
+
+        <section id="level3" class="py-16">
+            <h2 class="text-4xl md:text-5xl font-bold text-accent text-center mb-4">Level 3: ヴァイ奏法をマスターする実践ガイド</h2>
+            <p class="max-w-3xl mx-auto mb-12 text-lg text-center">彼の音楽を聴くだけでなく、実際にギターで弾いてみたいと思うのは自然な流れです。このセクションでは、彼のサウンドを構成する主要なテクニックを分析します。下のチャートは各テクニックの「技術的難易度」と「音楽的表現性」を視覚化したものです。バブルや下のカードをクリックして詳細を確認し、練習の計画を立てましょう。</p>
+            
+            <div class="bg-white p-4 md:p-8 rounded-lg shadow-xl mb-12">
+                <div class="chart-container">
+                    <canvas id="techniqueChart"></canvas>
+                </div>
+            </div>
+
+            <div id="technique-cards" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            </div>
+        </section>
+
+        <div class="border-t-2 border-secondary my-16"></div>
+        
+        <section id="level4" class="text-center py-16">
+            <h2 class="text-4xl md:text-5xl font-bold text-accent mb-4">Level 4: より深いコミュニティへ</h2>
+            <p class="max-w-3xl mx-auto mb-8 text-lg">スティーヴ・ヴァイの世界は、彼の音楽だけにとどまりません。彼の哲学、最新情報、そして世界中のファンと繋がることで、あなたの旅はさらに豊かなものになります。ここから、さらに深い沼へと足を踏み入れましょう。</p>
+            
+            <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                <a href="https://www.vai.com/" target="_blank" rel="noopener noreferrer" class="block bg-white p-6 rounded-lg shadow-lg hover:shadow-2xl transition-shadow">
+                    <h3 class="text-2xl font-bold mb-2 text-accent">公式サイト (Vai.com)</h3>
+                    <p class="text-left">全ての情報の根源。最新ニュース、ツアー日程、彼のブログ「Vaideology」など、一次情報が満載です。</p>
+                </a>
+                <a href="https://www.youtube.com/user/SteveVaiHimself" target="_blank" rel="noopener noreferrer" class="block bg-white p-6 rounded-lg shadow-lg hover:shadow-2xl transition-shadow">
+                    <h3 class="text-2xl font-bold mb-2 text-accent">公式YouTubeチャンネル</h3>
+                    <p class="text-left">ミュージックビデオ、ライブ映像、機材解説、Q&Aなど、動くヴァイを堪能できます。彼のユーモアのセンスも垣間見えます。</p>
+                </a>
+                <a href="https://www.patreon.com/stevevai" target="_blank" rel="noopener noreferrer" class="block bg-white p-6 rounded-lg shadow-lg hover:shadow-2xl transition-shadow">
+                    <h3 class="text-2xl font-bold mb-2 text-accent">Patreon</h3>
+                    <p class="text-left">彼を直接サポートし、限定コンテンツにアクセスできるプラットフォーム。より密なコミュニケーションや、未公開のデモ音源などが楽しめます。</p>
+                </a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-gray-800 text-white text-center p-4 mt-16">
+        <p>This interactive roadmap is a fan-made guide to the universe of Steve Vai.</p>
+    </footer>
+    
+    <div id="modal-backdrop" class="modal-backdrop hide">
+        <div id="modal-content" class="modal-content">
+        </div>
+    </div>
+
+
+<script>
+    const albumData = [
+        {
+            title: "Passion and Warfare",
+            year: 1990,
+            category: "essential",
+            cover: "https://placehold.co/300x300/6a3ab2/ffffff?text=Passion+%26+Warfare",
+            description: "ギターインストの歴史を塗り替えた革命的アルバム。テクニック、作曲、感情表現の全てが完璧に融合している。ヴァイを知る上で避けては通れない最重要作。",
+            keyTrack: "For the Love of God"
+        },
+        {
+            title: "Alien Love Secrets",
+            year: 1995,
+            category: "essential",
+            cover: "https://placehold.co/300x300/583094/ffffff?text=Alien+Love+Secrets",
+            description: "より生々しく、バンド感の強いEP。7曲というコンパクトさの中に、彼の多様な音楽性が凝縮されている。「Tender Surrender」収録。",
+            keyTrack: "The Boy from Seattle"
+        },
+        {
+            title: "The Ultra Zone",
+            year: 1999,
+            category: "essential",
+            cover: "https://placehold.co/300x300/8a4baf/ffffff?text=The+Ultra+Zone",
+            description: "ヘヴィなリフ、美しいメロディ、そして実験的なサウンドデザインが同居するアルバム。B'zの稲葉浩志と松本孝弘が参加した「Asian Sky」も収録。",
+            keyTrack: "The Ultra Zone"
+        },
+        {
+            title: "Flex-Able",
+            year: 1984,
+            category: "early",
+            cover: "https://placehold.co/300x300/3c2f4f/ffffff?text=Flex-Able",
+            description: "フランク・ザッパの影響を色濃く感じる、奇妙でユーモラスなデビューアルバム。後の作品とは一線を画すが、彼の原点がここにある。",
+            keyTrack: "The Attitude Song"
+        },
+        {
+            title: "Alcatrazz - Disturbing the Peace",
+            year: 1985,
+            category: "early",
+            cover: "https://placehold.co/300x300/4a3a61/ffffff?text=Alcatrazz",
+            description: "イングヴェイの後任として加入したバンド。彼のメロディアスかつテクニカルなプレイが、バンドのサウンドを新たな次元へと引き上げた。",
+            keyTrack: "God Blessed Video"
+        },
+        {
+            title: "David Lee Roth - Eat 'Em and Smile",
+            year: 1986,
+            category: "early",
+            cover: "https://placehold.co/300x300/3c2f4f/ffffff?text=Eat+%27Em+%26+Smile",
+            description: "ヴァン・ヘイレン脱退後のデイヴィッド・リー・ロスとの共演。彼のキャリアをスターダムに押し上げた、ロック史に残る名盤。",
+            keyTrack: "Yankee Rose"
+        },
+        {
+            title: "Whitesnake - Slip of the Tongue",
+            year: 1989,
+            category: "early",
+            cover: "https://placehold.co/300x300/4a3a61/ffffff?text=Whitesnake",
+            description: "怪我をしたエイドリアン・ヴァンデンバーグの代役として全編でギターをプレイ。彼の華麗なギターが80年代ハードロックの最後を飾った。",
+            keyTrack: "Fool for Your Loving"
+        },
+        {
+            title: "Real Illusions: Reflections",
+            year: 2005,
+            category: "recent",
+            cover: "https://placehold.co/300x300/a37fd1/ffffff?text=Real+Illusions",
+            description: "壮大なコンセプトに基づいた三部作の第一弾。オーケストラも導入し、よりシンフォニックで物語性の強い世界観を展開。",
+            keyTrack: "Building the Church"
+        },
+        {
+            title: "The Story of Light",
+            year: 2012,
+            category: "recent",
+            cover: "https://placehold.co/300x300/c7a5d9/ffffff?text=The+Story+of+Light",
+            description: "三部作の第二弾。ヴォーカル曲も多く、彼のソングライターとしての一面も強く感じられる。ブルースシンガーのエイミー・マンとのデュエットも。",
+            keyTrack: "The Story of Light"
+        },
+        {
+            title: "Inviolate",
+            year: 2022,
+            category: "recent",
+            cover: "https://placehold.co/300x300/eaddf7/ffffff?text=Inviolate",
+            description: "キャリアの集大成とも言える近年の傑作。衰え知らずのテクニックと創造性に加え、円熟味を増した音楽的深みが感じられる。",
+            keyTrack: "Teeth of the Hydra"
+        }
+    ];
+
+    const techniqueData = [
+        { name: "アーミング", difficulty: 8, expression: 10, frequency: 9, 
+          description: "彼の代名詞。フロイドローズ搭載ギターを使い、音を急降下/急上昇させるだけでなく、動物の鳴き声のようなサウンドや繊細なビブラートまで生み出す。", 
+          songs: "「The Attitude Song」, 「Bad Horsie」" },
+        { name: "レガート", difficulty: 7, expression: 9, frequency: 10,
+          description: "ピッキングを最小限に抑え、ハンマリングとプリングで滑らかに音を繋ぐテクニック。彼の流れるようなフレージングの核。",
+          songs: "「For the Love of God」, 「Tender Surrender」" },
+        { name: "タッピング", difficulty: 6, expression: 7, frequency: 7,
+          description: "右手で弦を叩いて音を出すテクニック。両手を使ったメロディアスなフレーズや、ピアノのようなアルペジオを構築する。",
+          songs: "「Building the Church」, 「The Ultra Zone」" },
+        { name: "変拍子/ポリリズム", difficulty: 9, expression: 8, frequency: 6,
+          description: "4/4拍子以外の複雑なリズム構造。7/8拍子や、複数のリズムが同時に進行するポリリズムを多用し、独特のグルーヴを生む。",
+          songs: "「The Riddle」, 「Fever Dream」" },
+        { name: "メロディックなフレージング", difficulty: 10, expression: 10, frequency: 10,
+          description: "彼の真骨頂。超絶技巧を使いながらも、常に歌心のあるキャッチーなメロディを奏でる。テクニックはあくまで表現の手段。",
+          songs: "全曲" },
+        { name: "ハーモニクス", difficulty: 5, expression: 6, frequency: 5,
+          description: "弦の特定の位置に軽く触れて出す高音。ピッキング・ハーモニクスやタッピング・ハーモニクスなど、多彩な方法でアクセントを加える。",
+          songs: "「Liberty」, 「Windows to the Soul」" },
+        { name: "スウィープピッキング", difficulty: 8, expression: 5, frequency: 4,
+          description: "複数の弦をまたぐアルペジオを、一方向のピッキングで滑らかに演奏する。彼のプレイの中では比較的頻度は低いが、効果的に使用される。",
+          songs: "「Juice」, 「Erotic Nightmares」" },
+        { name: "ボリューム奏法", difficulty: 4, expression: 7, frequency: 6,
+          description: "ギターのボリュームノブやペダルを使い、ヴァイオリンのように滑らかに音を立ち上げる。彼の表現力豊かなプレイに不可欠。",
+          songs: "「For the Love of God」イントロ" },
+    ];
+
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const albumGrid = document.getElementById('album-grid');
+        const albumFilters = document.getElementById('album-filters');
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const modalContent = document.getElementById('modal-content');
+        const techniqueCards = document.getElementById('technique-cards');
+
+        function displayAlbums(filter) {
+            albumGrid.innerHTML = '';
+            const filteredAlbums = (filter === 'all') ? albumData : albumData.filter(album => album.category === filter);
+            
+            filteredAlbums.forEach(album => {
+                const albumEl = document.createElement('div');
+                albumEl.className = 'album-card cursor-pointer group';
+                albumEl.dataset.title = album.title;
+                albumEl.innerHTML = `
+                    <div class="relative overflow-hidden rounded-lg">
+                        <img src="${album.cover}" alt="${album.title}" class="w-full h-auto transform group-hover:scale-110 transition-transform duration-300">
+                        <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <p class="text-white text-center font-bold">${album.title}<br>(${album.year})</p>
+                        </div>
+                    </div>
+                `;
+                albumEl.addEventListener('click', () => showAlbumModal(album));
+                albumGrid.appendChild(albumEl);
+            });
+        }
+
+        albumFilters.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                document.querySelector('#album-filters .active').classList.remove('active');
+                e.target.classList.add('active');
+                displayAlbums(e.target.dataset.filter);
+            }
+        });
+
+        function showAlbumModal(album) {
+            modalContent.innerHTML = `
+                <h3 class="text-3xl font-bold mb-4 text-accent">${album.title} (${album.year})</h3>
+                <img src="${album.cover}" alt="${album.title}" class="w-1/2 mx-auto mb-4 rounded-lg">
+                <p class="mb-4">${album.description}</p>
+                <p><strong>代表曲:</strong> ${album.keyTrack}</p>
+                <button id="close-modal" class="mt-6 w-full py-2 btn-primary rounded-lg">閉じる</button>
+            `;
+            modalBackdrop.classList.remove('hide');
+            document.getElementById('close-modal').addEventListener('click', () => {
+                modalBackdrop.classList.add('hide');
+            });
+        }
+        
+        modalBackdrop.addEventListener('click', (e) => {
+            if (e.target === modalBackdrop) {
+                modalBackdrop.classList.add('hide');
+            }
+        });
+
+        function displayTechniqueCards(highlightedTechnique = null) {
+            techniqueCards.innerHTML = '';
+            techniqueData.forEach((tech, index) => {
+                const isHighlighted = highlightedTechnique && tech.name === highlightedTechnique;
+                const card = document.createElement('div');
+                card.className = `tech-card bg-white p-6 rounded-lg shadow-lg cursor-pointer transition-all duration-300 ${isHighlighted ? 'ring-4 ring-accent scale-105' : 'hover:shadow-xl'}`;
+                card.dataset.index = index;
+                card.innerHTML = `
+                    <h4 class="text-xl font-bold mb-2 text-accent">${tech.name}</h4>
+                    <p class="font-light">${tech.description}</p>
+                    <p class="mt-3 text-sm"><strong>代表的な使用曲:</strong> ${tech.songs}</p>
+                `;
+                card.addEventListener('click', () => {
+                    displayTechniqueCards(tech.name);
+                });
+                techniqueCards.appendChild(card);
+            });
+        }
+
+
+        const ctx = document.getElementById('techniqueChart').getContext('2d');
+        const chartData = {
+            datasets: techniqueData.map(tech => ({
+                label: tech.name,
+                data: [{
+                    x: tech.difficulty,
+                    y: tech.expression,
+                    r: tech.frequency * 1.5
+                }],
+                backgroundColor: 'rgba(106, 58, 178, 0.7)',
+                borderColor: 'rgba(106, 58, 178, 1)',
+                borderWidth: 1,
+            }))
+        };
+        const techniqueChart = new Chart(ctx, {
+            type: 'bubble',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: '技術的難易度 →',
+                            font: { size: 14 }
+                        },
+                        min: 0,
+                        max: 11
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: '音楽的表現性 →',
+                             font: { size: 14 }
+                        },
+                        min: 0,
+                        max: 11
+                    }
+                },
+                onClick: (e, elements) => {
+                    if (elements.length > 0) {
+                        const datasetIndex = elements[0].datasetIndex;
+                        const techName = techniqueData[datasetIndex].name;
+                        displayTechniqueCards(techName);
+                    }
+                }
+            }
+        });
+
+        displayAlbums('all');
+        displayTechniqueCards();
+    });
+</script>
+</body>
+</html>
