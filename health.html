@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家族のための健康ライフスタイルプランナー</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals with Emerald Accent -->
+    <!-- Application Structure Plan: A thematic, single-page application designed for user empowerment. The structure follows a logical problem-solving flow: 1. Acknowledging the problem (現状分析) with a visual chart to make it tangible. 2. Presenting a high-level strategic solution (解決策の全体像) with three core pillars. 3. Providing specific, actionable, and interactive tips for the two main pain points: meals (食事の工夫) and exercise (運動のヒント). This structure was chosen to guide the user from understanding their situation to finding concrete, filterable actions, making the advice feel personalized and less overwhelming. -->
+    <!-- Visualization & Content Choices: 1. Calorie Creep Chart: Report Info -> Unseen calorie sources. Goal -> Inform/Visualize. Viz -> Doughnut Chart. Interaction -> Hover tooltips. Justification -> Makes the abstract problem of gradual weight gain concrete and easy to grasp. Library -> Chart.js. 2. Solution Pillars: Report Info -> Need for a holistic solution. Goal -> Organize. Viz -> 3-column card layout (HTML/CSS). Interaction -> None (structural). Justification -> Clearly frames the strategy. Library -> Tailwind CSS. 3. Interactive Tip Filters: Report Info -> Need specific advice for meals/exercise. Goal -> Organize/Inform. Viz -> Button-filtered content cards. Interaction -> Click to show/hide relevant tips. Justification -> Prevents information overload and allows users to explore solutions relevant to their immediate context (e.g., "what to do during work breaks?"). Library -> Vanilla JS. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            height: auto;
+            min-height: 300px;
+            margin: auto;
+        }
+        @media (min-width: 640px) {
+            .chart-container {
+                min-height: 350px;
+            }
+        }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+        }
+        .nav-link:hover {
+            color: #10b981;
+        }
+        .active-link {
+            color: #10b981;
+            border-bottom: 2px solid #10b981;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800">
+
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-xl font-bold text-emerald-600">🌿 健康プランナー</span>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#analysis" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-stone-600">現状分析</a>
+                        <a href="#solution" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-stone-600">解決策</a>
+                        <a href="#meals" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-stone-600">食事の工夫</a>
+                        <a href="#exercise" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-stone-600">運動のヒント</a>
+                        <a href="#training" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-stone-600">週間プログラム</a>
+                    </div>
+                </div>
+                 <div class="md:hidden">
+                    <select id="mobile-nav" class="bg-white border border-stone-300 text-stone-700 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block w-full p-2.5">
+                        <option value="#analysis">現状分析</option>
+                        <option value="#solution">解決策</option>
+                        <option value="#meals">食事の工夫</option>
+                        <option value="#exercise">運動のヒント</option>
+                        <option value="#training">週間プログラム</option>
+                    </select>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        
+        <section class="text-center mb-16">
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-emerald-700 mb-4">家族みんなで始める、<br class="sm:hidden">新しい健康習慣</h1>
+            <p class="max-w-3xl mx-auto text-base sm:text-lg text-stone-600">リモートワーク中のパパ・ママへ。忙しい毎日の中でも、無理なく続けられる食事と運動のヒントを見つけて、心も体も軽やかな毎日を送りましょう。</p>
+        </section>
+
+        <div id="app-content" class="space-y-16">
+
+            <section id="analysis" class="scroll-mt-20">
+                <h2 class="text-2xl sm:text-3xl font-bold text-center mb-2 text-stone-800">なぜ？リモートワークで体重が増えやすいのか</h2>
+                <p class="text-center text-stone-600 mb-8 max-w-2xl mx-auto">無意識のうちにカロリーが増え、消費が減っていませんか？まずは現状を客観的に見てみましょう。下のグラフにカーソルを合わせると、隠れたカロリー源の例が表示されます。</p>
+                <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                        <div>
+                            <h3 class="text-xl font-bold text-emerald-700 mb-4">見えないカロリーの正体</h3>
+                            <div class="space-y-4 text-stone-700">
+                                <div class="p-4 bg-emerald-50 rounded-lg">
+                                    <h4 class="font-semibold">🍽️「もったいない」が招く食べ過ぎ</h4>
+                                    <p class="text-sm">お子様の食べ残しは、少量でも毎日続けば大きなカロリーに。愛情からくる行動が、ご自身の健康を少しずつ蝕んでいるかもしれません。</p>
+                                </div>
+                                <div class="p-4 bg-emerald-50 rounded-lg">
+                                    <h4 class="font-semibold">🚶 通勤がなくなったことによる運動不足</h4>
+                                    <p class="text-sm">往復の通勤で消費されていたカロリーがゼロに。駅までのウォーキングや階段の上り下りなど、日常の活動量が大幅に減少しています。</p>
+                                </div>
+                                 <div class="p-4 bg-emerald-50 rounded-lg">
+                                    <h4 class="font-semibold">🏠 在宅環境による間食の増加</h4>
+                                    <p class="text-sm">キッチンがすぐそこにある環境は、つい間食に手が伸びがち。仕事のストレス解消や気分転換が、カロリーオーバーの原因になることも。</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="calorieChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="solution" class="scroll-mt-20">
+                <h2 class="text-2xl sm:text-3xl font-bold text-center mb-8 text-stone-800">解決への3つのアプローチ</h2>
+                 <p class="text-center text-stone-600 mb-8 max-w-3xl mx-auto">体重管理の成功は、単一の方法に頼るのではなく、「意識」「食事」「運動」の3つのバランスを取ることが鍵です。このセクションでは、その全体像を理解し、次のステップへ進むための土台を築きます。</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+                    <div class="bg-white rounded-xl shadow-lg p-6 text-center transform hover:scale-105 transition-transform duration-300">
+                        <div class="text-5xl mb-4">💡</div>
+                        <h3 class="text-xl font-bold text-emerald-700 mb-2">意識を変える</h3>
+                        <p class="text-stone-600 text-sm">「もったいない」から「体を大切に」へ。まずは考え方からアプローチ。自分の健康が家族の幸せに繋がることを再認識しましょう。</p>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-lg p-6 text-center transform hover:scale-105 transition-transform duration-300">
+                        <div class="text-5xl mb-4">🥗</div>
+                        <h3 class="text-xl font-bold text-emerald-700 mb-2">食事を工夫する</h3>
+                        <p class="text-stone-600 text-sm">食べ残しを前提にしない食卓作り。調理法や盛り付け方、保存方法を見直すことで、無理なくカロリーをコントロールします。</p>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-lg p-6 text-center transform hover:scale-105 transition-transform duration-300">
+                        <div class="text-5xl mb-4">🏃‍♀️</div>
+                        <h3 class="text-xl font-bold text-emerald-700 mb-2">活動を増やす</h3>
+                        <p class="text-stone-600 text-sm">特別な運動時間だけでなく、日常の「ついで」にできる活動をプラス。子供との遊びや家事を、効果的なエクササイズに変えましょう。</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="meals" class="scroll-mt-20">
+                <h2 class="text-2xl sm:text-3xl font-bold text-center mb-2 text-stone-800">食べ残しにサヨナラ！食事の工夫</h2>
+                <p class="text-center text-stone-600 mb-8 max-w-3xl mx-auto">「もったいない」という気持ちと上手に付き合いながら、食べ過ぎを防ぐための具体的なテクニックをご紹介します。気になるタイミングのボタンをクリックして、ヒントを見てみましょう。</p>
+                <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
+                    <div class="flex flex-wrap justify-center gap-2 sm:gap-4 mb-8">
+                        <button data-filter="all" class="meal-filter-btn active-filter-btn font-semibold py-2 px-4 rounded-full transition-colors duration-300">すべて</button>
+                        <button data-filter="before" class="meal-filter-btn font-semibold py-2 px-4 rounded-full transition-colors duration-300">調理前</button>
+                        <button data-filter="during" class="meal-filter-btn font-semibold py-2 px-4 rounded-full transition-colors duration-300">食事中</button>
+                        <button data-filter="after" class="meal-filter-btn font-semibold py-2 px-4 rounded-full transition-colors duration-300">食事後</button>
+                    </div>
+                    <div id="meal-tips-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="meal-tip-card" data-category="before">
+                            <div class="bg-stone-100 rounded-lg p-5 h-full">
+                                <h4 class="font-bold text-emerald-800 mb-2">少量ずつ盛り付ける</h4>
+                                <p class="text-sm text-stone-700">大皿ではなく個別の皿に、まずは「少し足りないかな？」くらいの量を。おかわりは自由、というルールにすれば、食べ残しがぐっと減ります。</p>
+                            </div>
+                        </div>
+                        <div class="meal-tip-card" data-category="before">
+                            <div class="bg-stone-100 rounded-lg p-5 h-full">
+                                <h4 class="font-bold text-emerald-800 mb-2">リメイク前提で多めに作る</h4>
+                                <p class="text-sm text-stone-700">ハンバーグを多めに作って翌日はミートソースに。食べ残しではなく「翌日のための仕込み」と考えれば、罪悪感なく片付けられます。</p>
+                            </div>
+                        </div>
+                        <div class="meal-tip-card" data-category="during">
+                           <div class="bg-stone-100 rounded-lg p-5 h-full">
+                                <h4 class="font-bold text-emerald-800 mb-2">「自分で食べられる量」を意識させる</h4>
+                                <p class="text-sm text-stone-700">お子様に配膳を手伝ってもらい、自分で食べる量を決めさせましょう。自己管理能力を育む食育にも繋がります。</p>
+                           </div>
+                        </div>
+                        <div class="meal-tip-card" data-category="after">
+                            <div class="bg-stone-100 rounded-lg p-5 h-full">
+                                <h4 class="font-bold text-emerald-800 mb-2">すぐに片付ける・保存する</h4>
+                                <p class="text-sm text-stone-700">食事が終わったら、残りをすぐに冷蔵・冷凍保存。ダラダラと食卓に置いておくと、つい口に運んでしまいがちです。</p>
+                            </div>
+                        </div>
+                        <div class="meal-tip-card" data-category="during">
+                            <div class="bg-stone-100 rounded-lg p-5 h-full">
+                                <h4 class="font-bold text-emerald-800 mb-2">野菜から先に食べる</h4>
+                                <p class="text-sm text-stone-700">まず親が実践。野菜や汁物から食べ始めることで血糖値の急上昇を抑え、満腹感も得やすくなります。子供も真似するようになります。</p>
+                            </div>
+                        </div>
+                        <div class="meal-tip-card" data-category="after">
+                            <div class="bg-stone-100 rounded-lg p-5 h-full">
+                                <h4 class="font-bold text-emerald-800 mb-2">「ごちそうさま」で一旦リセット</h4>
+                                <p class="text-sm text-stone-700">家族全員で「ごちそうさま」を言ったら食事は終わり、という区切りをつけましょう。その後はすぐに歯磨きをするのも効果的です。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="exercise" class="scroll-mt-20">
+                <h2 class="text-2xl sm:text-3xl font-bold text-center mb-2 text-stone-800">スキマ時間でOK！ながら運動のヒント</h2>
+                <p class="text-center text-stone-600 mb-8 max-w-3xl mx-auto">運動のための特別な時間を確保するのは大変です。ここでは、日常生活の中で無理なく活動量を増やすためのアイデアを提案します。あなたのライフスタイルに合うものを選んでみてください。</p>
+                 <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
+                    <div class="flex flex-wrap justify-center gap-2 sm:gap-4 mb-8">
+                        <button data-filter="all" class="exercise-filter-btn active-filter-btn font-semibold py-2 px-4 rounded-full transition-colors duration-300">すべて</button>
+                        <button data-filter="kids" class="exercise-filter-btn font-semibold py-2 px-4 rounded-full transition-colors duration-300">👨‍👩‍👧‍👦 子供と</button>
+                        <button data-filter="work" class="exercise-filter-btn font-semibold py-2 px-4 rounded-full transition-colors duration-300">💻 仕事合間</button>
+                        <button data-filter="daily" class="exercise-filter-btn font-semibold py-2 px-4 rounded-full transition-colors duration-300">🏠 日常生活</button>
+                    </div>
+                    <div id="exercise-tips-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="exercise-tip-card" data-category="work">
+                            <div class="bg-emerald-50 rounded-lg p-5 h-full">
+                                <h4 class="font-bold text-emerald-800 mb-2">オンライン会議中は立つ</h4>
+                                <p class="text-sm text-stone-700">カメラオフの会議なら、その場で足踏みや軽いスクワットも可能。座りっぱなしを防ぐだけでも大きな効果があります。</p>
+                            </div>
+                        </div>
+                        <div class="exercise-tip-card" data-category="kids">
+                            <div class="bg-emerald-50 rounded-lg p-5 h-full">
+                                <h4 class="font-bold text-emerald-800 mb-2">全力で公園遊び・鬼ごっこ</h4>
+                                <p class="text-sm text-stone-700">子供の遊びに本気で付き合うと、驚くほど良い運動になります。週末はぜひ公園へ。子供の体力向上にも繋がります。</p>
+                            </div>
+                        </div>
+                        <div class="exercise-tip-card" data-category="daily">
+                            <div class="bg-emerald-50 rounded-lg p-5 h-full">
+                                <h4 class="font-bold text-emerald-800 mb-2">一駅手前で降りて歩く</h4>
+                                <p class="text-sm text-stone-700">外出の機会があれば、意識的に歩く距離を延ばしましょう。天気の良い日は気分転換にもなり、一石二鳥です。</p>
+                            </div>
+                        </div>
+                        <div class="exercise-tip-card" data-category="kids">
+                            <div class="bg-emerald-50 rounded-lg p-5 h-full">
+                                <h4 class="font-bold text-emerald-800 mb-2">お風呂掃除でトレーニング</h4>
+                                <p class="text-sm text-stone-700">浴槽を磨く動きは腕や背中の筋肉を使います。子供と一緒にゲーム感覚で掃除をすれば、家も綺麗になり運動もできます。</p>
+                            </div>
+                        </div>
+                        <div class="exercise-tip-card" data-category="work">
+                            <div class="bg-emerald-50 rounded-lg p-5 h-full">
+                                <h4 class="font-bold text-emerald-800 mb-2">ポモドーロ・エクササイズ</h4>
+                                <p class="text-sm text-stone-700">25分仕事したら5分休憩のサイクルに、ストレッチや階段昇降を。集中力も維持でき、運動も習慣化できます。</p>
+                            </div>
+                        </div>
+                        <div class="exercise-tip-card" data-category="daily">
+                            <div class="bg-emerald-50 rounded-lg p-5 h-full">
+                                <h4 class="font-bold text-emerald-800 mb-2">テレビを見ながら筋トレ</h4>
+                                <p class="text-sm text-stone-700">CMの間だけプランクやスクワットをする、というルールを設定。家族で競い合っても楽しいかもしれません。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="training" class="scroll-mt-20">
+                <h2 class="text-2xl sm:text-3xl font-bold text-center mb-2 text-stone-800">やってみよう！一週間のやさしいトレーニング</h2>
+                <p class="text-center text-stone-600 mb-8 max-w-3xl mx-auto">毎日15分から始められる、家族みんなで楽しめるトレーニングプログラムです。タブをクリックして、その日のメニューを確認しましょう。無理せず、自分のペースで続けることが大切です。</p>
+                <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
+                    <div class="mb-6 border-b border-stone-200">
+                        <nav class="-mb-px flex flex-wrap justify-center gap-x-2 sm:gap-x-4" aria-label="Tabs">
+                            <button data-day="monday" class="training-tab active-training-tab whitespace-nowrap py-3 px-2 sm:px-4 border-b-2 font-medium text-sm">月曜日</button>
+                            <button data-day="tuesday" class="training-tab whitespace-nowrap py-3 px-2 sm:px-4 border-b-2 font-medium text-sm">火曜日</button>
+                            <button data-day="wednesday" class="training-tab whitespace-nowrap py-3 px-2 sm:px-4 border-b-2 font-medium text-sm">水曜日</button>
+                            <button data-day="thursday" class="training-tab whitespace-nowrap py-3 px-2 sm:px-4 border-b-2 font-medium text-sm">木曜日</button>
+                            <button data-day="friday" class="training-tab whitespace-nowrap py-3 px-2 sm:px-4 border-b-2 font-medium text-sm">金曜日</button>
+                            <button data-day="weekend" class="training-tab whitespace-nowrap py-3 px-2 sm:px-4 border-b-2 font-medium text-sm">週末</button>
+                            <button data-day="rest" class="training-tab whitespace-nowrap py-3 px-2 sm:px-4 border-b-2 font-medium text-sm">休息日</button>
+                        </nav>
+                    </div>
+                    <div id="training-content">
+                        <div id="day-monday" class="training-day-content space-y-4">
+                            <h3 class="text-xl font-bold text-emerald-700">月曜日: 全身を軽く動かす日</h3>
+                            <p class="text-stone-600">週の始まりは、心と体を起こす軽い運動から。仕事の合間にリフレッシュしましょう。</p>
+                            <ul class="list-disc list-inside space-y-2 text-stone-700">
+                                <li><strong>ウォーミングアップ:</strong> ラジオ体操第一 (5分)</li>
+                                <li><strong>親子でスクワット:</strong> 10回 × 2セット</li>
+                                <li><strong>壁立て伏せ:</strong> 10回 × 2セット</li>
+                                <li><strong>クールダウン:</strong> ゆっくりとした全身のストレッチ (5分)</li>
+                            </ul>
+                        </div>
+                        <div id="day-tuesday" class="training-day-content hidden space-y-4">
+                            <h3 class="text-xl font-bold text-emerald-700">火曜日: 下半身を鍛える日</h3>
+                            <p class="text-stone-600">基礎代謝アップに繋がる大きな筋肉を刺激します。</p>
+                            <ul class="list-disc list-inside space-y-2 text-stone-700">
+                                <li><strong>ウォーミングアップ:</strong> その場で足踏み (5分)</li>
+                                <li><strong>ワイドスクワット:</strong> 15回 × 2セット</li>
+                                <li><strong>ランジ (左右交互):</strong> 各10回 × 2セット</li>
+                                <li><strong>クールダウン:</strong> 下半身中心のストレッチ (5分)</li>
+                            </ul>
+                        </div>
+                        <div id="day-wednesday" class="training-day-content hidden space-y-4">
+                            <h3 class="text-xl font-bold text-emerald-700">水曜日: アクティブレスト(積極的休養)</h3>
+                            <p class="text-stone-600">週の半ばは軽い有酸素運動でリフレッシュ。気分転換にもなります。</p>
+                            <ul class="list-disc list-inside space-y-2 text-stone-700">
+                                <li><strong>早歩きの散歩:</strong> 20分。お子様と一緒なら、少し遠い公園まで歩いてみましょう。</li>
+                                <li><strong>ヨガ or ストレッチ:</strong> 15分。動画を見ながらリラックス。</li>
+                            </ul>
+                        </div>
+                        <div id="day-thursday" class="training-day-content hidden space-y-4">
+                            <h3 class="text-xl font-bold text-emerald-700">木曜日: 上半身と体幹の日</h3>
+                            <p class="text-stone-600">姿勢改善にも効果的。ポッコリお腹の解消を目指しましょう。</p>
+                             <ul class="list-disc list-inside space-y-2 text-stone-700">
+                                <li><strong>ウォーミングアップ:</strong> 腕回し、肩回し (5分)</li>
+                                <li><strong>プランク:</strong> 30秒 × 2セット</li>
+                                <li><strong>ペットボトルでアームカール:</strong> 15回 × 2セット (左右)</li>
+                                <li><strong>クールダウン:</strong> 上半身中心のストレッチ (5分)</li>
+                            </ul>
+                        </div>
+                        <div id="day-friday" class="training-day-content hidden space-y-4">
+                            <h3 class="text-xl font-bold text-emerald-700">金曜日: 有酸素運動の日</h3>
+                            <p class="text-stone-600">一週間の締めくくりに、心拍数を少し上げて脂肪燃焼。</p>
+                            <ul class="list-disc list-inside space-y-2 text-stone-700">
+                                <li><strong>踏み台昇降:</strong> 10分 (低い段差でOK)</li>
+                                <li><strong>子供とダンス:</strong> 好きな曲をかけて5分間全力で踊る！</li>
+                                <li><strong>その場でジョギング:</strong> 5分</li>
+                            </ul>
+                        </div>
+                        <div id="day-weekend" class="training-day-content hidden space-y-4">
+                            <h3 class="text-xl font-bold text-emerald-700">週末: 家族でアクティビティ</h3>
+                            <p class="text-stone-600">平日の運動が難しい場合は、週末にまとめて活動量を確保しましょう。</p>
+                            <ul class="list-disc list-inside space-y-2 text-stone-700">
+                                <li><strong>公園で全力遊び:</strong> 鬼ごっこ、ボール遊びなど (30分以上)</li>
+                                <li><strong>サイクリング or 長めの散歩:</strong> 新しい場所の開拓も楽しい。</li>
+                                <li><strong>大掃除:</strong> 窓拭きや床拭きは良い全身運動になります。</li>
+                            </ul>
+                        </div>
+                        <div id="day-rest" class="training-day-content hidden space-y-4">
+                            <h3 class="text-xl font-bold text-emerald-700">休息日</h3>
+                            <p class="text-stone-600">筋肉を休ませることもトレーニングの一部です。無理は禁物。ストレッチや散歩など、ごく軽い活動に留め、体を回復させましょう。</p>
+                            <div class="mt-4 p-4 bg-emerald-50 rounded-lg">
+                                <p class="text-sm text-emerald-800">💡 <strong>ポイント:</strong> このプログラムはあくまで一例です。週に2〜3日から始めて、慣れてきたら日数を増やしましょう。「週末」と「休息日」を組み合わせて、ご自身の予定に合わせて調整してください。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="bg-stone-800 text-white mt-16">
+        <div class="max-w-6xl mx-auto py-6 px-4 sm:px-6 lg:px-8 text-center text-sm">
+            <p>&copy; 2025 健康ライフスタイルプランナー. 自分を大切にすることが、家族の笑顔に繋がります。</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const calorieData = {
+                labels: ['子供の食べ残し', '通勤での消費減', '在宅での間食'],
+                datasets: [{
+                    label: '隠れたカロリーの割合',
+                    data: [35, 45, 20],
+                    backgroundColor: [
+                        'rgba(239, 68, 68, 0.7)',
+                        'rgba(59, 130, 246, 0.7)',
+                        'rgba(245, 158, 11, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(239, 68, 68, 1)',
+                        'rgba(59, 130, 246, 1)',
+                        'rgba(245, 158, 11, 1)'
+                    ],
+                    borderWidth: 1,
+                    hoverOffset: 4
+                }]
+            };
+
+            const calorieConfig = {
+                type: 'doughnut',
+                data: calorieData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    size: 14,
+                                    family: "'Noto Sans JP', sans-serif"
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: '1日の「つい」を可視化',
+                            font: {
+                                size: 18,
+                                family: "'Noto Sans JP', sans-serif"
+                            },
+                            padding: {
+                                top: 10,
+                                bottom: 20
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed + '% 程度の要因';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                },
+            };
+            
+            const calorieChartCtx = document.getElementById('calorieChart');
+            if(calorieChartCtx) {
+                new Chart(calorieChartCtx, calorieConfig);
+            }
+
+            function setupFilter(btnClass, cardClass, activeClass) {
+                const filterBtns = document.querySelectorAll(btnClass);
+                const tipCards = document.querySelectorAll(cardClass);
+
+                filterBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        filterBtns.forEach(b => b.classList.remove(activeClass));
+                        btn.classList.add(activeClass);
+
+                        const filter = btn.dataset.filter;
+
+                        tipCards.forEach(card => {
+                            if (filter === 'all' || card.dataset.category === filter) {
+                                card.style.display = 'block';
+                            } else {
+                                card.style.display = 'none';
+                            }
+                        });
+                    });
+                });
+            }
+
+            setupFilter('.meal-filter-btn', '.meal-tip-card', 'active-filter-btn');
+            setupFilter('.exercise-filter-btn', '.exercise-tip-card', 'active-filter-btn');
+            
+            const activeMealFilterBtn = 'bg-emerald-600 text-white';
+            const inactiveMealFilterBtn = 'bg-stone-200 text-stone-700 hover:bg-stone-300';
+            document.querySelectorAll('.meal-filter-btn').forEach(btn => {
+                if (btn.dataset.filter === 'all') {
+                    btn.className = `meal-filter-btn active-filter-btn font-semibold py-2 px-4 rounded-full transition-colors duration-300 ${activeMealFilterBtn}`;
+                } else {
+                    btn.className = `meal-filter-btn font-semibold py-2 px-4 rounded-full transition-colors duration-300 ${inactiveMealFilterBtn}`;
+                }
+                btn.addEventListener('click', (e) => {
+                     document.querySelectorAll('.meal-filter-btn').forEach(b => {
+                        b.className = `meal-filter-btn font-semibold py-2 px-4 rounded-full transition-colors duration-300 ${inactiveMealFilterBtn}`;
+                     });
+                     e.currentTarget.className = `meal-filter-btn active-filter-btn font-semibold py-2 px-4 rounded-full transition-colors duration-300 ${activeMealFilterBtn}`;
+                });
+            });
+
+            const activeExerciseFilterBtn = 'bg-emerald-600 text-white';
+            const inactiveExerciseFilterBtn = 'bg-stone-200 text-stone-700 hover:bg-stone-300';
+            document.querySelectorAll('.exercise-filter-btn').forEach(btn => {
+                if (btn.dataset.filter === 'all') {
+                    btn.className = `exercise-filter-btn active-filter-btn font-semibold py-2 px-4 rounded-full transition-colors duration-300 ${activeExerciseFilterBtn}`;
+                } else {
+                    btn.className = `exercise-filter-btn font-semibold py-2 px-4 rounded-full transition-colors duration-300 ${inactiveExerciseFilterBtn}`;
+                }
+                 btn.addEventListener('click', (e) => {
+                     document.querySelectorAll('.exercise-filter-btn').forEach(b => {
+                        b.className = `exercise-filter-btn font-semibold py-2 px-4 rounded-full transition-colors duration-300 ${inactiveExerciseFilterBtn}`;
+                     });
+                     e.currentTarget.className = `exercise-filter-btn active-filter-btn font-semibold py-2 px-4 rounded-full transition-colors duration-300 ${activeExerciseFilterBtn}`;
+                });
+            });
+
+            const trainingTabs = document.querySelectorAll('.training-tab');
+            const trainingContents = document.querySelectorAll('.training-day-content');
+            const activeTrainingTabClass = 'border-emerald-500 text-emerald-600';
+            const inactiveTrainingTabClass = 'border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-300';
+
+            trainingTabs.forEach(tab => {
+                if(tab.classList.contains('active-training-tab')) {
+                     tab.classList.add(...activeTrainingTabClass.split(' '));
+                     tab.classList.remove(...inactiveTrainingTabClass.split(' '));
+                } else {
+                     tab.classList.add(...inactiveTrainingTabClass.split(' '));
+                     tab.classList.remove(...activeTrainingTabClass.split(' '));
+                }
+
+                tab.addEventListener('click', () => {
+                    trainingTabs.forEach(t => {
+                        t.classList.remove('active-training-tab', ...activeTrainingTabClass.split(' '));
+                        t.classList.add(...inactiveTrainingTabClass.split(' '));
+                    });
+
+                    tab.classList.add('active-training-tab', ...activeTrainingTabClass.split(' '));
+                    tab.classList.remove(...inactiveTrainingTabClass.split(' '));
+                    
+                    const day = tab.dataset.day;
+                    trainingContents.forEach(content => {
+                        if (content.id === `day-${day}`) {
+                            content.classList.remove('hidden');
+                        } else {
+                            content.classList.add('hidden');
+                        }
+                    });
+                });
+            });
+
+
+            const sections = document.querySelectorAll('section[id]');
+            const navLinks = document.querySelectorAll('.nav-link');
+            const mobileNav = document.getElementById('mobile-nav');
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const id = entry.target.getAttribute('id');
+                        navLinks.forEach(link => {
+                            link.classList.remove('active-link');
+                            if (link.getAttribute('href') === `#${id}`) {
+                                link.classList.add('active-link');
+                            }
+                        });
+                        if (mobileNav) {
+                            mobileNav.value = `#${id}`;
+                        }
+                    }
+                });
+            }, { rootMargin: "-50% 0px -50% 0px" });
+
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+            
+            if(mobileNav) {
+                mobileNav.addEventListener('change', (e) => {
+                   window.location.hash = e.target.value;
+                });
+            }
+        });
+    </script>
+</body>
+</html>
+
