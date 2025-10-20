@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ギターコレクション・アドバイザー</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: A single-page, three-step interactive tool. Step 1: User selects multiple music genres from a grid. Step 2: User chooses the desired number of guitars via a slider. Step 3: A results area dynamically displays the recommended guitar collection. This sequential, task-oriented flow is intuitive and guides the user directly from input to output, making the complex recommendation logic feel simple and immediate. -->
+    <!-- Visualization & Content Choices: Report Info (User's desired genres/collection size) -> Goal (Provide a versatile guitar recommendation) -> Presentation Method (Dynamically generated HTML cards with guitar name, icon, and justification text) -> Interaction (Clicking genres and moving the slider instantly updates the recommendation cards) -> Justification (This provides immediate feedback and allows for easy exploration of different combinations without page reloads. The textual justification explains the 'why' behind the recommendation, which is key for user trust and understanding.) -> Library/Method (Vanilla JS for DOM manipulation and logic. No charting libraries needed as the output is qualitative.) -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', Meiryo, sans-serif;
+            background-color: #FDFBF8;
+            color: #4A4A4A;
+        }
+        .step-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #8B4513;
+            border-bottom: 2px solid #D2B48C;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .genre-btn, .guitar-count-btn {
+            transition: all 0.2s ease-in-out;
+            border: 2px solid #D2B48C;
+        }
+        .genre-btn:hover, .guitar-count-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .genre-btn.selected, .guitar-count-btn.selected {
+            background-color: #8B4513;
+            color: white;
+            border-color: #8B4513;
+        }
+        .result-card {
+            background-color: white;
+            border: 1px solid #EAEAEA;
+            border-left: 5px solid #8B4513;
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+        }
+        .result-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        #recommendation-area {
+            transition: opacity 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-5xl">
+
+        <header class="text-center mb-8 md:mb-12">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-2">ギターコレクション・アドバイザー</h1>
+            <p class="text-md text-gray-600">あなたの音楽スタイルに最適なギターの組み合わせを見つけましょう。</p>
+        </header>
+
+        <main class="space-y-8 md:space-y-12">
+            <!-- Step 1: ジャンル選択 -->
+            <section>
+                <h2 class="step-title">STEP 1: 演奏したい音楽ジャンルを選択してください (複数選択可)</h2>
+                <div id="genre-selector" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+                </div>
+            </section>
+
+            <!-- Step 2: 本数選択 -->
+            <section>
+                <h2 class="step-title">STEP 2: 所有したいギターの本数を選択してください</h2>
+                <div id="guitar-count-selector" class="flex flex-wrap justify-center gap-3 md:gap-4">
+                </div>
+            </section>
+
+            <!-- Step 3: 結果表示 -->
+            <section class="bg-stone-100 p-4 md:p-6 rounded-lg shadow-inner">
+                <h2 class="step-title">STEP 3: あなたへのおすすめ構成</h2>
+                <div id="recommendation-area" class="space-y-4 min-h-[200px] flex flex-col justify-center items-center">
+                    <p id="initial-message" class="text-gray-500 text-center">ジャンルと本数を選択すると、ここに結果が表示されます。</p>
+                </div>
+            </section>
+        </main>
+
+        <footer class="text-center mt-12 text-sm text-gray-500">
+            <p>&copy; 2025 ギターコレクション・アドバイザー. All Rights Reserved.</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const genres = [
+                { id: 'rock', name: 'ロック' },
+                { id: 'blues', name: 'ブルース' },
+                { id: 'metal', name: 'メタル' },
+                { id: 'jazz', name: 'ジャズ' },
+                { id: 'funk', name: 'ファンク' },
+                { id: 'pop', name: 'ポップス' },
+                { id: 'country', name: 'カントリー' },
+                { id: 'acoustic', name: 'アコースティック' },
+                { id: 'classical', name: 'クラシック' },
+                { id: 'fusion', name: 'フュージョン' }
+            ];
+
+            const guitars = {
+                strat: { 
+                    name: 'ストラトキャスタータイプ', 
+                    icon: '🎸',
+                    description: '非常に汎用性が高く、クリーンからクランチまで幅広い音作りが可能です。特にカッティングや繊細な表現が得意です。',
+                    genres: ['rock', 'blues', 'funk', 'pop', 'fusion'] 
+                },
+                tele: { 
+                    name: 'テレキャスタータイプ',
+                    icon: '🎸',
+                    description: '歯切れの良い高音域が特徴で、バッキングからリードまでこなします。シンプルながらも表現力豊かなギターです。',
+                    genres: ['rock', 'blues', 'pop', 'country'] 
+                },
+                lespaul: { 
+                    name: 'レスポールタイプ',
+                    icon: '🎸',
+                    description: '太くパワフルなハムバッカーサウンドが魅力。サステインが豊かで、重厚なロックや泣きのリードプレイに最適です。',
+                    genres: ['rock', 'blues', 'metal', 'jazz'] 
+                },
+                semiaco: {
+                    name: 'セミアコースティックタイプ',
+                    icon: '🎻',
+                    description: '甘くメロウなトーンが特徴。フィードバックにも強く、ジャズやブルース、歌もののバッキングに絶大な人気を誇ります。',
+                    genres: ['jazz', 'blues', 'fusion', 'rock'] 
+                },
+                acoustic_dread: { 
+                    name: 'アコースティックギター (ドレッドノート)',
+                    icon: '🎤',
+                    description: 'パワフルなストロークサウンドが持ち味。弾き語りやバンドアンサンブルでのアコースティックパートの定番です。',
+                    genres: ['acoustic', 'pop', 'country', 'rock'] 
+                },
+                extended_range: {
+                    name: '7弦/8弦ギター',
+                    icon: '🤘',
+                    description: '通常より多い弦で重低音をカバー。現代的なメタルやジェントなど、ヘヴィな音楽ジャンルで活躍します。',
+                    genres: ['metal', 'fusion']
+                },
+                classical: {
+                    name: 'クラシックギター',
+                    icon: '🎼',
+                    description: '柔らかく暖かみのあるナイロン弦のサウンド。クラシック音楽はもちろん、ボサノヴァやポップスでも使用されます。',
+                    genres: ['classical']
+                }
+            };
+            
+            let selectedGenres = [];
+            let selectedCount = 1;
+
+            const genreSelector = document.getElementById('genre-selector');
+            const guitarCountSelector = document.getElementById('guitar-count-selector');
+            const recommendationArea = document.getElementById('recommendation-area');
+            const initialMessage = document.getElementById('initial-message');
+
+            function initializeUI() {
+                genres.forEach(genre => {
+                    const button = document.createElement('button');
+                    button.classList.add('genre-btn', 'w-full', 'py-2', 'px-4', 'rounded-lg', 'font-semibold', 'bg-white', 'shadow-sm');
+                    button.textContent = genre.name;
+                    button.dataset.genreId = genre.id;
+                    button.addEventListener('click', () => toggleGenre(genre.id, button));
+                    genreSelector.appendChild(button);
+                });
+
+                for (let i = 1; i <= 5; i++) {
+                    const button = document.createElement('button');
+                    button.classList.add('guitar-count-btn', 'py-2', 'px-5', 'rounded-lg', 'font-semibold', 'bg-white', 'shadow-sm');
+                    button.textContent = `${i}本`;
+                    button.dataset.count = i;
+                    if (i === 1) button.classList.add('selected');
+                    button.addEventListener('click', () => selectCount(i, button));
+                    guitarCountSelector.appendChild(button);
+                }
+            }
+
+            function toggleGenre(genreId, button) {
+                button.classList.toggle('selected');
+                const index = selectedGenres.indexOf(genreId);
+                if (index > -1) {
+                    selectedGenres.splice(index, 1);
+                } else {
+                    selectedGenres.push(genreId);
+                }
+                updateRecommendation();
+            }
+
+            function selectCount(count, button) {
+                selectedCount = count;
+                document.querySelectorAll('.guitar-count-btn').forEach(btn => btn.classList.remove('selected'));
+                button.classList.add('selected');
+                updateRecommendation();
+            }
+
+            function updateRecommendation() {
+                recommendationArea.style.opacity = '0';
+
+                setTimeout(() => {
+                    if (selectedGenres.length === 0) {
+                        recommendationArea.innerHTML = '';
+                        initialMessage.textContent = 'まず、演奏したいジャンルを1つ以上選択してください。';
+                        recommendationArea.appendChild(initialMessage);
+                        recommendationArea.style.opacity = '1';
+                        return;
+                    }
+                    
+                    initialMessage.style.display = 'none';
+                    recommendationArea.innerHTML = '';
+
+                    const scores = Object.keys(guitars).map(key => {
+                        const guitar = guitars[key];
+                        const score = guitar.genres.reduce((acc, genre) => {
+                            return acc + (selectedGenres.includes(genre) ? 1 : 0);
+                        }, 0);
+                        const versatility = guitar.genres.length;
+                        return { id: key, score, versatility, ...guitar };
+                    });
+
+                    scores.sort((a, b) => {
+                        if (b.score !== a.score) {
+                            return b.score - a.score;
+                        }
+                        return b.versatility - a.versatility;
+                    });
+                    
+                    const recommended = scores.slice(0, selectedCount);
+
+                    if (recommended.length > 0 && recommended[0].score > 0) {
+                        recommended.forEach(rec => {
+                            const matchedGenres = rec.genres.filter(g => selectedGenres.includes(g));
+                            const matchedGenreNames = matchedGenres.map(gid => genres.find(g => g.id === gid).name);
+                            
+                            const card = document.createElement('div');
+                            card.classList.add('result-card', 'p-4', 'rounded-lg', 'shadow-md', 'w-full');
+                            card.innerHTML = `
+                                <div class="flex items-start space-x-4">
+                                    <div class="text-4xl">${rec.icon}</div>
+                                    <div>
+                                        <h3 class="text-xl font-bold text-gray-800">${rec.name}</h3>
+                                        <p class="text-gray-600 mt-1">${rec.description}</p>
+                                        <div class="mt-3 bg-amber-50 p-2 rounded-md">
+                                            <p class="text-sm font-semibold text-amber-800">おすすめの理由:</p>
+                                            <p class="text-sm text-amber-700">選択した <span class="font-bold">${matchedGenreNames.join('、')}</span> との相性が抜群です。</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            recommendationArea.appendChild(card);
+                        });
+                    } else {
+                        recommendationArea.innerHTML = `<p class="text-gray-500 text-center">選択したジャンルに合うおすすめが見つかりませんでした。別のジャンルを試してみてください。</p>`;
+                    }
+                    recommendationArea.style.opacity = '1';
+                }, 300);
+            }
+
+            initializeUI();
+        });
+    </script>
+</body>
+</html>
