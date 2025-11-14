@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>トヨタ純正 vs 社外品 カーセキュリティ徹底比較</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Chosen Palette: Warm Neutrals (bg-gray-100, bg-white) with accents: Toyota Blue (text-blue-700) and Aftermarket Orange (text-orange-600) -->
+    <!-- Application Structure Plan: このSPAは、ユーザーが意思決定を行うのを支援するために、ダッシュボード風の比較レイアウトを採用しています。構造は「① クイック推奨（インタラクティブ）」→「② 詳細な横並び比較（静的テキスト）」→「③ データ視覚化（インタラクティブ・チャート）」→「④ 推奨シナリオ」→「⑤ 結論」の順に配置。このフローにより、ユーザーはまず自分のニーズに合った簡単な回答を得てから、必要に応じて詳細な比較やデータにドリルダウンできます。レポートの章立てをそのまま再現するのではなく、ユーザーの「知りたいこと」ベースの順序（結論ファースト、次に詳細）に再構築しています。 -->
+    <!-- Visualization & Content Choices: [レポート情報：純正品と社外品の総合評価] -> [ゴール：多角的な強み・弱みを比較] -> [表示方法：レーダーチャート（Chart.js）] -> [インタラクション：ボタンクリックで比較対象（ハイエンド社外品/ベーシック社外品）を切り替え] -> [正当性：5つの異なる評価軸（統合性、信頼性、機能性、カスタマイズ性、コスト）を同時に比較するのに最適] -> [ライブラリ：Chart.js]。[レポート情報：価格帯] -> [ゴール：コストの範囲を比較] -> [表示方法：フローティングバーチャート（Chart.js）] -> [インタラクション：ホバーで詳細な価格帯を表示] -> [正当性：最小〜最大の価格幅を視覚的に分かりやすく示すため] -> [ライブラリ：Chart.js]。テキスト情報は、比較しやすいようにカード型のグリッドレイアウトで整理。 -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 350px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+                max-height: 400px;
+            }
+        }
+        .nav-button {
+            transition: all 0.3s ease;
+            @apply px-4 py-2 rounded-lg font-semibold text-gray-700 bg-white shadow hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50;
+        }
+        .nav-button.active {
+            @apply bg-blue-700 text-white shadow-lg hover:bg-blue-800;
+        }
+        .card {
+            @apply bg-white rounded-xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl;
+        }
+        h2 {
+            @apply text-2xl font-bold text-gray-800 mb-4;
+        }
+        h3 {
+            @apply text-xl font-bold mb-3;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-blue-800 mb-4">カーセキュリティ徹底比較</h1>
+            <p class="text-xl text-gray-600">トヨタ純正「プレミアム」 vs 社外システム</p>
+        </header>
+
+        <nav class="flex flex-wrap justify-center gap-3 mb-12">
+            <a href="#recommendation" class="nav-button">クイック診断</a>
+            <a href="#comparison" class="nav-button">詳細比較</a>
+            <a href="#charts" class="nav-button">データで見る</a>
+            <a href="#scenarios" class="nav-button">推奨シナリオ</a>
+            <a href="#conclusion" class="nav-button">結論</a>
+        </nav>
+
+        <section id="recommendation" class="mb-16 card">
+            <h2>あなたに最適なのは？ クイック診断</h2>
+            <p class="text-gray-600 mb-6">あなたがカーセキュリティに求める最優先事項を1つ選んでください。あなたへのお勧めの傾向と、その理由を表示します。</p>
+            
+            <div class="flex flex-wrap justify-center gap-4 mb-6">
+                <button onclick="updateRecommendation('warranty')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1 shadow-lg">
+                    🛡️ 完璧な連携と新車保証
+                </button>
+                <button onclick="updateRecommendation('features')" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1 shadow-lg">
+                    🚀 高度な機能とカスタマイズ性
+                </button>
+                <button onclick="updateRecommendation('cost')" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1 shadow-lg">
+                    💰 コストパフォーマンス
+                </button>
+            </div>
+            
+            <div id="recommendation-text" class="p-6 rounded-lg transition-all duration-500" style="min-height: 100px;">
+                <p class="text-center text-gray-500">上のボタンから優先事項を選択してください。</p>
+            </div>
+        </section>
+
+        <section id="comparison" class="mb-16">
+            <h2>詳細比較：トヨタ純正 vs 社外品</h2>
+            <p class="text-gray-600 mb-8 text-center">両者の主な特徴、優位性（メリット）、注意点（デメリット）をまとめました。左右に並べて比較してみましょう。</p>
+            <div class="grid md:grid-cols-2 gap-8">
+                
+                <div class="card border-t-4 border-blue-600">
+                    <h3 class="text-blue-700">トヨタ セキュリティシステム プレミアム</h3>
+                    <p class="mb-4 text-gray-600">トヨタが車両と同時に開発した、T-Connect/G-Linkサービスと連携する純正セキュリティ。</p>
+                    
+                    <h4 class="font-bold text-lg mb-2 text-green-700">優位性 (メリット)</h4>
+                    <ul class="list-disc list-inside space-y-2 mb-4 text-gray-700">
+                        <li><strong>車両との完璧な統合:</strong> スマートキーやT-Connect/G-Linkと完全に連携。後付け感が一切ありません。</li>
+                        <li><strong>高い信頼性と保証:</strong> 新車保証が適用され、万が一の際もディーラーで一貫したサポートが受けられます。</li>
+                        <li><strong>通知サービス:</strong> 異常発生時にT-Connect/G-Linkを通じてスマートフォンやメールに通知が届きます。</li>
+                        <li><strong>品質の担保:</strong> 車両メーカーの厳しい品質基準をクリアしており、誤作動が少ないとされています。</li>
+                        <li><strong>リセールバリュー:</strong> 純正オプションは車両売却時にプラス査定となる場合があります。</li>
+                    </ul>
+                    
+                    <h4 class="font-bold text-lg mb-2 text-red-700">注意点 (デメリット)</h4>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700">
+                        <li><strong>コスト:</strong> 初期費用が社外品（特に中級品）と比較して高額になる傾向があります。</li>
+                        <li><strong>機能の限定性:</strong> 機能は高品質ですが、社外品のハイエンドモデルにあるような「過剰」とも言える高度な機能（例：広範囲2ウェイリモコン、リモートエンジンスタート）は含まれない場合があります。</li>
+                        <li><strong>カスタマイズ性の低さ:</strong> 機能や設定の変更はほぼできません。</li>
+                    </ul>
+                </div>
+                
+                <div class="card border-t-4 border-orange-600">
+                    <h3 class="text-orange-700">社外 セキュリティシステム</h3>
+                    <p class="mb-4 text-gray-600">カー用品店や専門店が取り扱う、サードパーティ製のセキュリティシステム。</p>
+                    
+                    <h4 class="font-bold text-lg mb-2 text-green-700">優位性 (メリット)</h4>
+                    <ul class="list-disc list-inside space-y-2 mb-4 text-gray-700">
+                        <li><strong>豊富な選択肢と機能:</strong> シンプルなアラームから、GPS追跡、ドライブレコーダー連動、2ウェイリモコン、リモートスタートまで、膨大な選択肢があります。</li>
+                        <li><strong>高いカスタマイズ性:</strong> センサーの感度や警告音、各種オプションを自分好みに細かく設定・追加できます。</li>
+                        <li><strong>コストパフォーマンス:</strong> 同等の機能であれば純正品より安価な場合が多く、予算に応じた製品選びが可能です。</li>
+                        <li><strong>高度な防犯機能:</strong> CANインベーダー対策、イモビライザーの二重化など、特定の脅威に特化した強力な製品も存在します。</li>
+                    </ul>
+                    
+                    <h4 class="font-bold text-lg mb-2 text-red-700">注意点 (デメリット)</h4>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700">
+                        <li><strong>品質と信頼性のばらつき:</strong> 製品の品質、そして何より「取り付け技術」に大きく左右されます。取り付け不良は誤作動や車両の電装系トラブルの原因になります。</li>
+                        <li><strong>車両保証への影響:</strong> 取り付け方法によっては、車両の電装系の新車保証が受けられなくなる可能性があります。</li>
+                        <li><strong>システム連携の不完全さ:</strong> スマートキーや車両の標準機能との連携がスムーズにいかない、または別途高価なアダプタが必要になる場合があります。</li>
+                        <li><strong>サポートの複雑さ:</strong> 問題発生時、それが製品の問題か、取り付けの問題か、車両の問題かの切り分けが難しい場合があります。</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="charts" class="mb-16">
+            <h2>データで見る比較</h2>
+            <p class="text-gray-600 mb-8 text-center">機能の傾向と一般的なコスト感をグラフで比較します。社外品は選択肢が広いため、「ハイエンド」と「ベーシック」の2パターンで比較します。</p>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="card">
+                    <h3>機能・特性比較 (5点満点)</h3>
+                    <div class="flex flex-wrap justify-center gap-2 my-4">
+                        <button id="btn-radar-high" class="nav-button active" onclick="updateRadarChart('high')">vs 社外ハイエンド</button>
+                        <button id="btn-radar-basic" class="nav-button" onclick="updateRadarChart('basic')">vs 社外ベーシック</button>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-4 text-center">※ グラフは一般的な傾向を示すイメージです。</p>
+                </div>
+
+                <div class="card">
+                    <h3>一般的な導入コスト比較</h3>
+                    <p class="text-gray-600 mb-4 text-sm">純正品はオプション価格、社外品は製品代＋標準的な取り付け工賃を含んだ目安です。</p>
+                    <div class="chart-container" style="max-width: 600px;">
+                        <canvas id="barChart"></canvas>
+                    </div>
+                     <p class="text-sm text-gray-500 mt-4 text-center">※ 社外品の価格は製品や店舗により大きく変動します。</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="scenarios" class="mb-16">
+            <h2>推奨シナリオ：こんな人におすすめ</h2>
+            <p class="text-gray-600 mb-8 text-center">あなたの車の使い方や価値観から、どちらが向いているか考えてみましょう。</p>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="card bg-blue-50 border-l-4 border-blue-500">
+                    <h3 class="text-blue-800">トヨタ純正プレミアムがおすすめな人</h3>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700">
+                        <li>トヨタの新車（特に高価格帯の車種）を購入する人</li>
+                        <li>車両保証やリセールバリューを最重要視する人</li>
+                        <li>T-Connect/G-Linkのサービスを最大限活用したい人</li>
+                        <li>後付けの機器や配線によるトラブルのリスクを絶対に避けたい人</li>
+                        <li>セキュリティのことはディーラーに「すべてお任せ」したい人</li>
+                    </ul>
+                </div>
+                <div class="card bg-orange-50 border-l-4 border-orange-500">
+                    <h3 class="text-orange-800">社外システムがおすすめな人</h3>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700">
+                        <li>特定の機能（例：リモートスタート、ドラレコ連動）が絶対に欲しい人</li>
+                        <li>予算を厳密に管理したい、またはコストを最優先に考えたい人</li>
+                        <li>中古車を購入し、最新のセキュリティ機能を追加したい人</li>
+                        <li>CANインベーダーなど、特定の脅威への強力な対策を求める人</li>
+                        <li>信頼できるプロショップ（取り付け店）を知っている人</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="conclusion" class="card bg-gray-800 text-white">
+            <h2>結論：どちらが優れているか？</h2>
+            <p class="text-lg text-gray-300 mb-4">結論として、「どちらが優れているか」は、その人が何を重視するかによって変わります。</p>
+            <p class="text-gray-300 mb-4"><strong>トヨタ純正「プレミアム」の優位性は「完璧な統合性」と「絶対的な信頼・保証」</strong>にあります。車両と一体で開発されたことによる安心感は、何物にも代えがたい価値があります。新車購入時、特にT-Connectを活用する前提であれば、最も手堅い選択肢です。</p>
+            <p class="text-gray-300 mb-4"><strong>社外品の優位性は「機能の多様性」と「カスタマイズ性」、そして「価格の選択肢」</strong>にあります。特定の脅威に対抗する強力な機能や、予算に合わせた柔軟な構成が可能です。ただし、その性能は「製品の品質」と「取り付け技術」に大きく依存するため、信頼できるプロショップ選びが成功の鍵となります。</p>
+            <p class="text-lg font-semibold text-white mt-6">あなたのカーライフと予算、そして「どこまでリスクを許容できるか」を天秤にかけ、最適なセキュリティを選択してください。</p>
+        </section>
+        
+    </div>
+
+    <footer class="text-center py-8 text-gray-500 text-sm">
+        <p>このページは、一般的な情報に基づいて作成された比較レポートです。実際の製品やサービスとは異なる場合があります。</p>
+    </footer>
+
+    <script>
+        let myRadarChart;
+        let myBarChart;
+
+        const recommendationData = {
+            'warranty': {
+                'title': 'お勧め: トヨタ純正プレミアム',
+                'text': '車両との完璧な連携、新車保証の維持、ディーラーでの一貫したサポートは、純正システムならではの最大の強みです。「安心をお金で買う」という考え方に最もマッチします。T-Connect/G-Linkとの連携による通知機能も強力です。',
+                'class': 'bg-blue-50 border-l-4 border-blue-500'
+            },
+            'features': {
+                'title': 'お勧め: 社外ハイエンドシステム',
+                'text': 'GPS追跡、ドライブレコーダー連動、2ウェイリモコン、CANインベーダー対策など、純正品にはない高度な機能や特定の脅威対策を求めるなら、社外品のハイエンドモデルが最適です。信頼できるプロショップでの施工が必須です。',
+                'class': 'bg-orange-50 border-l-4 border-orange-500'
+            },
+            'cost': {
+                'title': 'お勧め: 社外ベーシック〜ミドルレンジ',
+                'text': '「とにかくコストを抑えたい」「最低限のアラーム機能があればいい」という場合は、社外品のベーシックモデルが適しています。また、純正品と同等の機能をより安価に実現できるミドルレンジの社外品もコストパフォーマンスに優れます。',
+                'class': 'bg-green-50 border-l-4 border-green-500'
+            }
+        };
+
+        const radarChartData = {
+            labels: ['統合性', '信頼性/保証', '機能性', 'カスタマイズ性', 'コスト'],
+            datasets: {
+                toyota: {
+                    label: 'トヨタ純正',
+                    data: [5, 5, 3, 1, 2],
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    borderColor: 'rgba(59, 130, 246, 1)',
+                    pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+                },
+                high: {
+                    label: '社外ハイエンド',
+                    data: [3, 2, 5, 5, 3],
+                    backgroundColor: 'rgba(234, 88, 12, 0.2)',
+                    borderColor: 'rgba(234, 88, 12, 1)',
+                    pointBackgroundColor: 'rgba(234, 88, 12, 1)',
+                },
+                basic: {
+                    label: '社外ベーシック',
+                    data: [2, 1, 2, 2, 5],
+                    backgroundColor: 'rgba(22, 163, 74, 0.2)',
+                    borderColor: 'rgba(22, 163, 74, 1)',
+                    pointBackgroundColor: 'rgba(22, 163, 74, 1)',
+                }
+            }
+        };
+
+        const barChartData = {
+            labels: ['トヨタ純正', '社外ハイエンド', '社外ミドル', '社外ベーシック'],
+            datasets: [{
+                label: '導入コスト (目安)',
+                data: [
+                    [80000, 150000], 
+                    [120000, 250000],
+                    [50000, 100000],
+                    [20000, 50000]
+                ],
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.7)',
+                    'rgba(234, 88, 12, 0.7)',
+                    'rgba(249, 115, 22, 0.7)',
+                    'rgba(22, 163, 74, 0.7)'
+                ],
+                borderColor: [
+                    'rgba(59, 130, 246, 1)',
+                    'rgba(234, 88, 12, 1)',
+                    'rgba(249, 115, 22, 1)',
+                    'rgba(22, 163, 74, 1)'
+                ],
+                borderWidth: 1,
+                borderSkipped: false,
+            }]
+        };
+
+        function updateRecommendation(priority) {
+            const data = recommendationData[priority];
+            const el = document.getElementById('recommendation-text');
+            
+            el.innerHTML = `
+                <h3 class="font-bold text-xl mb-2 ${data.class.includes('blue') ? 'text-blue-800' : (data.class.includes('orange') ? 'text-orange-800' : 'text-green-800')}">${data.title}</h3>
+                <p class="text-gray-700">${data.text}</p>
+            `;
+            el.className = `p-6 rounded-lg transition-all duration-500 ${data.class}`;
+        }
+
+        function updateRadarChart(type) {
+            const datasets = [radarChartData.datasets.toyota];
+            const btnHigh = document.getElementById('btn-radar-high');
+            const btnBasic = document.getElementById('btn-radar-basic');
+
+            if (type === 'high') {
+                datasets.push(radarChartData.datasets.high);
+                btnHigh.classList.add('active');
+                btnBasic.classList.remove('active');
+            } else {
+                datasets.push(radarChartData.datasets.basic);
+                btnHigh.classList.remove('active');
+                btnBasic.classList.add('active');
+            }
+            
+            myRadarChart.data.datasets = datasets;
+            myRadarChart.update();
+        }
+
+        function initCharts() {
+            Chart.defaults.font.family = "'Noto Sans JP', sans-serif";
+            Chart.defaults.plugins.tooltip.labelWrap = true;
+            Chart.defaults.responsive = true;
+            Chart.defaults.maintainAspectRatio = false;
+
+            const radarCtx = document.getElementById('radarChart').getContext('2d');
+            myRadarChart = new Chart(radarCtx, {
+                type: 'radar',
+                data: {
+                    labels: radarChartData.labels,
+                    datasets: [
+                        radarChartData.datasets.toyota,
+                        radarChartData.datasets.high
+                    ]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            min: 0,
+                            max: 5,
+                            ticks: {
+                                stepSize: 1
+                            },
+                            pointLabels: {
+                                font: {
+                                    size: 13
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.raw} 点`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const barCtx = document.getElementById('barChart').getContext('2d');
+            myBarChart = new Chart(barCtx, {
+                type: 'bar',
+                data: barChartData,
+                options: {
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            min: 0,
+                            max: 270000,
+                            ticks: {
+                                callback: function(value) {
+                                    return (value / 10000) + '万円';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const val = context.raw;
+                                    const formatted = val.map(v => (v / 10000).toLocaleString('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 1 }) + '万');
+                                    return `${context.dataset.label}: ${formatted[0]} 〜 ${formatted[1]}円`;
+                                }
+                            }
+                        },
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            updateRecommendation('warranty');
+            document.getElementById('btn-radar-high').classList.add('active');
+            
+            document.querySelectorAll('.nav-button[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                    
+                    document.querySelectorAll('.nav-button').forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
