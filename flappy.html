@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cute Flappy Bird (Fixed 60 FPS)</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+        canvas {
+            background-color: #70c5ce;
+            border: 2px solid #000;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            /* ドット絵っぽくしたくないのでアンチエイリアスを有効に */
+            image-rendering: auto; 
+        }
+        #instructions {
+            position: absolute;
+            color: white;
+            top: 10px;
+            text-align: center;
+            pointer-events: none;
+            text-shadow: 1px 1px 2px black;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="instructions">
+        <h2>Cute Flappy Bird</h2>
+        <p>スペースキー または クリックでジャンプ</p>
+    </div>
+    <canvas id="gameCanvas" width="320" height="480"></canvas>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // FPS制御用
+    const FPS = 60;
+    const interval = 1000 / FPS;
+    let lastTime = 0;
+
+    let frames = 0;
+    let score = 0;
+    let gameState = "START";
+
+    // --- 鳥（プレイヤー） ---
+    const bird = {
+        x: 50,
+        y: 150,
+        w: 30, // 見た目を大きくしたので少し判定も大きく
+        h: 30,
+        radius: 15, // 衝突判定用の半径
+        velocity: 0,
+        gravity: 0.25,
+        jumpStrength: -4.5,
+        // 回転アニメーション用の角度
+        angle: 0,
+        
+        draw: function() {
+            // 鳥の中心座標
+            let cx = this.x + this.w / 2;
+            let cy = this.y + this.h / 2;
+
+            ctx.save(); // 現在の描画状態を保存
+            
+            // 鳥の移動と回転
+            ctx.translate(cx, cy);
+            // 上昇中は上向き、下降中は下向きに少し回転させる
+            let targetAngle = (this.velocity < 0) ? -20 * Math.PI/180 : 
+                              (this.velocity > 2) ? 20 * Math.PI/180 : 0;
+            // 簡易的な角度の補間（滑らかにする）
+            this.angle += (targetAngle - this.angle) * 0.1;
+            ctx.rotate(this.angle);
+
+            // --- ここから鳥の描画 ---
+            // 座標系は鳥の中心が(0,0)になっていることに注意
+
+            // 1. くちばし
+            ctx.fillStyle = "#FF6F00"; // オレンジ
+            ctx.beginPath();
+            ctx.moveTo(10, 2);
+            ctx.lineTo(22, 6);
+            ctx.lineTo(10, 10);
+            ctx.fill();
+            ctx.strokeStyle = "#E65100";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // 2. 体 (黄色い丸)
+            ctx.fillStyle = "#FFD700"; // 明るい黄色
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "#FFC107"; // 濃い黄色で縁取り
+            ctx.stroke();
+
+            // 3. 翼 (体の横に小さな楕円)
+            ctx.fillStyle = "#FFC107"; // 少し濃い黄色
+            ctx.beginPath();
+            // 楕円を描く(中心x, 中心y, 半径x, 半径y, 回転, 開始角, 終了角)
+            ctx.ellipse(-8, 5, 8, 5, Math.PI / 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // 4. 目 (白目)
+            ctx.fillStyle = "#FFFFFF";
+            ctx.beginPath();
+            ctx.arc(8, -5, 7, 0, Math.PI * 2);
+            ctx.fill();
+            // 目の縁取りは細く黒く
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = "#000";
+            ctx.stroke();
+
+            // 5. 黒目
+            ctx.fillStyle = "#000000";
+            ctx.beginPath();
+            ctx.arc(11, -5, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 6. 目のハイライト（輝き）
+            ctx.fillStyle = "#FFFFFF";
+            ctx.beginPath();
+            ctx.arc(12, -6.5, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore(); // 描画状態を元に戻す（回転などをリセット）
+        },
+        
+        update: function() {
+            this.velocity += this.gravity;
+            this.y += this.velocity;
+
+            if (this.y + this.h >= canvas.height - 10) {
+                this.y = canvas.height - 10 - this.h;
+                gameOver();
+            }
+            if (this.y < 0) {
+                this.y = 0;
+                this.velocity = 0;
+            }
+        },
+        
+        jump: function() {
+            this.velocity = this.jumpStrength;
+        }
+    };
+
+    // --- 土管 ---
+    const pipes = {
+        position: [],
+        w: 45, // 少し太く
+        gap: 110, // 少し広くして遊びやすく
+        dx: 2,
+        
+        draw: function() {
+            for(let i = 0; i < this.position.length; i++){
+                let p = this.position[i];
+                let topY = p.y;
+                
+                // パイプ本体の色
+                ctx.fillStyle = "#73bf2e";
+                // パイプの縁取りの色
+                ctx.strokeStyle = "#558c22";
+                ctx.lineWidth = 2;
+
+                // 上のパイプ
+                ctx.fillRect(p.x, 0, this.w, topY);
+                ctx.strokeRect(p.x, 0, this.w, topY);
+                // パイプの口（フチ）
+                ctx.fillRect(p.x - 2, topY - 20, this.w + 4, 20);
+                ctx.strokeRect(p.x - 2, topY - 20, this.w + 4, 20);
+                
+                // 下のパイプ
+                let bottomPipeY = topY + this.gap;
+                let bottomPipeH = canvas.height - bottomPipeY;
+                ctx.fillRect(p.x, bottomPipeY, this.w, bottomPipeH);
+                ctx.strokeRect(p.x, bottomPipeY, this.w, bottomPipeH);
+                // パイプの口（フチ）
+                ctx.fillRect(p.x - 2, bottomPipeY, this.w + 4, 20);
+                ctx.strokeRect(p.x - 2, bottomPipeY, this.w + 4, 20);
+            }
+        },
+        
+        update: function() {
+            if(frames % 120 === 0){
+                this.position.push({
+                    x: canvas.width,
+                    y: Math.random() * (canvas.height - 150 - this.gap) + 50
+                });
+            }
+
+            for(let i = 0; i < this.position.length; i++){
+                let p = this.position[i];
+                p.x -= this.dx;
+
+                if(p.x + this.w <= 0){
+                    this.position.shift();
+                    score++;
+                    i--; 
+                    continue;
+                }
+
+                // 衝突判定（見た目に合わせて少し調整）
+                let birdLeft = bird.x + 5; // 少し内側にする
+                let birdRight = bird.x + bird.w - 5;
+                let birdTop = bird.y + 5;
+                let birdBottom = bird.y + bird.h - 5;
+
+                let pipeLeft = p.x;
+                let pipeRight = p.x + this.w;
+                let topPipeBottom = p.y;
+                let bottomPipeTop = p.y + this.gap;
+
+                if(birdRight > pipeLeft && birdLeft < pipeRight){
+                    if(birdTop < topPipeBottom || birdBottom > bottomPipeTop){
+                        gameOver();
+                    }
+                }
+            }
+        },
+        
+        reset: function() {
+            this.position = [];
+        }
+    };
+
+    // --- 背景 ---
+    const bg = {
+        draw: function() {
+            // 地面の色を少しリッチに
+            ctx.fillStyle = "#dcd194";
+            ctx.fillRect(0, canvas.height - 15, canvas.width, 15);
+            // 草の部分
+            ctx.fillStyle = "#73bf2e";
+            ctx.fillRect(0, canvas.height - 15, canvas.width, 4);
+            
+            ctx.strokeStyle = "#558c22";
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height-15);
+            ctx.lineTo(canvas.width, canvas.height-15);
+            ctx.stroke();
+        }
+    };
+
+    // --- 制御系 ---
+    function gameOver() {
+        gameState = "GAMEOVER";
+    }
+
+    function resetGame() {
+        bird.y = 150;
+        bird.velocity = 0;
+        bird.angle = 0; // 角度もリセット
+        pipes.reset();
+        score = 0;
+        frames = 0;
+        gameState = "PLAYING";
+    }
+
+    function drawScore() {
+        ctx.fillStyle = "#FFF";
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 2;
+        ctx.font = "35px Impact";
+        ctx.fillText(score, canvas.width/2 - 10, 50);
+        ctx.strokeText(score, canvas.width/2 - 10, 50);
+    }
+
+    function drawStartScreen() {
+        ctx.fillStyle = "#FFF";
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 1;
+        ctx.font = "25px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("Click to Start", canvas.width/2, 240);
+        ctx.strokeText("Click to Start", canvas.width/2, 240);
+    }
+
+    function drawGameOverScreen() {
+        ctx.fillStyle = "#FFF";
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 2;
+        ctx.font = "35px Impact";
+        ctx.textAlign = "center";
+        ctx.fillText("Game Over", canvas.width/2, 200);
+        ctx.strokeText("Game Over", canvas.width/2, 200);
+        
+        ctx.lineWidth = 1;
+        ctx.font = "20px Arial";
+        ctx.fillText("Score: " + score, canvas.width/2, 240);
+        ctx.fillText("Click to Restart", canvas.width/2, 280);
+    }
+
+    function update() {
+        if (gameState === "PLAYING") {
+            pipes.update();
+            bird.update();
+            frames++;
+        }
+    }
+
+    function draw() {
+        ctx.fillStyle = "#70c5ce";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        bg.draw();
+
+        // パイプを先に描画して、鳥が手前に来るようにする
+        if (gameState !== "START") {
+            pipes.draw();
+        }
+
+        if (gameState === "START") {
+            bird.draw();
+            drawStartScreen();
+        } else if (gameState === "PLAYING") {
+            bird.draw();
+            drawScore();
+        } else if (gameState === "GAMEOVER") {
+            bird.draw();
+            drawScore();
+            drawGameOverScreen();
+        }
+    }
+
+    // FPS固定ループ
+    function loop(timestamp) {
+        if (!lastTime) lastTime = timestamp;
+        const deltaTime = timestamp - lastTime;
+        if (deltaTime >= interval) {
+            lastTime = timestamp - (deltaTime % interval);
+            update();
+            draw();
+        }
+        requestAnimationFrame(loop);
+    }
+
+    // --- 入力 ---
+    window.addEventListener("keydown", function(e) {
+        if (e.code === "Space") handleInput();
+    });
+    window.addEventListener("mousedown", function(e) {
+        handleInput();
+    });
+    window.addEventListener("touchstart", function(e) {
+        handleInput();
+        e.preventDefault();
+    }, {passive: false});
+
+    function handleInput() {
+        switch(gameState) {
+            case "START":
+                resetGame();
+                break;
+            case "PLAYING":
+                bird.jump();
+                break;
+            case "GAMEOVER":
+                resetGame();
+                break;
+        }
+    }
+
+    requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>
