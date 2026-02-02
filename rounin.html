@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新しい暮らしの提案：安心と自由</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts (Noto Sans JP) -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- 
+    Color Palette Selected: "Warm & Trustworthy"
+    Primary: #264653 (Dark Charcoal - Text/Depth)
+    Secondary: #2A9D8F (Teal - Health/Safety)
+    Accent 1: #E9C46A (Yellow - Positivity)
+    Accent 2: #E76F51 (Coral - Energy/Urgency)
+    Background: #F4F1DE (Cream - Warmth/Readability)
+    -->
+
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #F4F1DE;
+            color: #264653;
+        }
+
+        /* Chart Container Styling - Responsive Boundaries */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px; /* Max width constraint */
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px; /* Base height */
+            max-height: 400px;
+            background-color: white;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+
+        /* Custom Card Styling */
+        .info-card {
+            transition: transform 0.2s;
+        }
+        .info-card:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Timeline styling without SVG */
+        .timeline-item {
+            border-left: 4px solid #2A9D8F;
+            padding-left: 1.5rem;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+        .timeline-item::before {
+            content: '●';
+            color: #E76F51;
+            font-size: 1.5rem;
+            position: absolute;
+            left: -0.65rem;
+            top: -0.25rem;
+            background-color: #F4F1DE;
+        }
+    </style>
+
+    <!--
+    PLAN NARRATIVE & STRUCTURE:
+    1. Hook: "A New Chapter" - Reframe nursing homes as "Lifestyle Support" rather than "Old People's Homes".
+    2. The Reality Check: Data on falls at home vs. safety in facilities. (Goal: Inform/Compare)
+    3. Time & Freedom: Comparing time spent on painful chores vs. hobbies. (Goal: Compare)
+    4. Cost & Value: Visualizing the "Reasonable" aspect. Home care costs vs. Facility fees. (Goal: Compare)
+    5. Community & Joy: Satisfaction metrics from residents. (Goal: Relationships)
+    6. Conclusion: Emphasizing independence through support.
+    
+    VISUALIZATION CHOICES (NO SVG):
+    - Section 2 (Safety): Donut Chart. Shows high % of accidents occurring at home.
+    - Section 3 (Lifestyle): Stacked Bar Chart. Contrast "Chores/Worry" time vs "Free Time".
+    - Section 4 (Cost): Bar Chart. Comparing Monthly Costs (Home Renovation/Helpers vs All-inclusive).
+    - Section 5 (Satisfaction): Radar Chart. Comparing QoL dimensions (Safety, Food, Social, Health).
+    -->
+</head>
+<body class="antialiased">
+
+    <!-- Hero Section -->
+    <header class="bg-[#2A9D8F] text-[#F4F1DE] py-12 px-4 shadow-lg">
+        <div class="max-w-4xl mx-auto text-center">
+            <h1 class="text-3xl md:text-5xl font-bold mb-4">「老人扱い」ではなく<br>「プロのサポート」を選ぶ</h1>
+            <p class="text-xl md:text-2xl font-light opacity-90">
+                足腰の痛みや不安から解放され、<br>
+                もっと自分らしく生きるための賢い選択肢
+            </p>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 gap-12">
+
+        <!-- Section 1: Introduction -->
+        <section class="bg-white rounded-lg shadow-md p-8 border-t-4 border-[#E76F51]">
+            <h2 class="text-2xl font-bold text-[#264653] mb-4">🏠 なぜ今、環境を変えるのか？</h2>
+            <p class="leading-relaxed text-lg text-gray-700">
+                「まだ自分でできる」という気持ちは大切です。しかし、足腰の痛みを我慢しながらの生活は、知らず知らずのうちに行動範囲を狭めてしまいます。
+                施設は「自由を奪う場所」ではなく、面倒な家事や安全管理をプロに任せることで、<br>
+                <strong>「本当にやりたいことに使える時間と体力」</strong>を取り戻す場所です。
+            </p>
+        </section>
+
+        <!-- Section 2: Safety Data (The Reality of Falls) -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            <div class="order-2 md:order-1">
+                <div class="chart-container">
+                    <canvas id="fallRiskChart"></canvas>
+                </div>
+            </div>
+            <div class="order-1 md:order-2">
+                <h3 class="text-2xl font-bold text-[#E76F51] mb-3">⚠️ 自宅こそが一番のリスク？</h3>
+                <p class="mb-4 text-gray-700">
+                    実は、高齢者の転倒事故の多くは「住み慣れた自宅」で起きています。
+                    ちょっとした段差や、お風呂場での移動などが大きな怪我につながるケースが後を絶ちません。
+                </p>
+                <div class="bg-[#F4F1DE] p-4 rounded-lg border-l-4 border-[#E9C46A]">
+                    <p class="font-bold text-[#264653]">💡 ポイント</p>
+                    <p class="text-sm">
+                        施設ではバリアフリー設計と24時間の見守りがあるため、転倒リスクが大幅に減少し、万が一の際も即座に対応可能です。
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Lifestyle Comparison (Time Usage) -->
+        <section class="bg-white rounded-lg shadow-md p-8">
+            <h3 class="text-2xl font-bold text-[#2A9D8F] mb-6">⏳ 時間の使い方が変わります</h3>
+            <p class="mb-8 text-gray-700 max-w-3xl">
+                独り暮らしや在宅介護では、掃除・洗濯・食事の準備など「やらなければならないこと」に多くの時間と体力を奪われます。
+                施設に入居することで、それらの負担がゼロになり、趣味や休息、おしゃべりの時間が増えます。
+            </p>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Chart occupying 2 columns -->
+                <div class="lg:col-span-2">
+                    <div class="chart-container" style="max-width: 100%;">
+                        <canvas id="lifestyleChart"></canvas>
+                    </div>
+                </div>
+                <!-- Description -->
+                <div class="flex flex-col justify-center space-y-4">
+                    <div class="p-4 bg-gray-50 rounded border border-gray-200">
+                        <h4 class="font-bold text-[#E76F51] mb-2">これまでの生活</h4>
+                        <ul class="list-none space-y-2 text-sm">
+                            <li>🧹 家事の負担 (腰への負担)</li>
+                            <li>😰 転倒への不安</li>
+                            <li>🛒 買い物の重労働</li>
+                        </ul>
+                    </div>
+                    <div class="text-center text-2xl">⬇️</div>
+                    <div class="p-4 bg-[#E0F2F1] rounded border border-[#2A9D8F]">
+                        <h4 class="font-bold text-[#2A9D8F] mb-2">新しい生活</h4>
+                        <ul class="list-none space-y-2 text-sm">
+                            <li>🎨 趣味の時間</li>
+                            <li>🍵 友人とのティータイム</li>
+                            <li>💆‍♀️ リハビリ・マッサージ</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Cost Effectiveness -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            <div>
+                <h3 class="text-2xl font-bold text-[#264653] mb-3">💰 「リーズナブル」な安心設計</h3>
+                <p class="mb-4 text-gray-700">
+                    自宅で安全に暮らすためのリフォーム費用や、ヘルパーさんを頼む費用、食費、光熱費...これらを積み上げると、意外と高額になります。
+                    定額で全てが賄われる施設の方が、経済的な見通しが立ちやすい場合が多いのです。
+                </p>
+                <ul class="space-y-3 mt-6">
+                    <li class="flex items-center">
+                        <span class="text-[#E9C46A] text-xl mr-2">●</span>
+                        <span>家賃・食費・光熱費が込み</span>
+                    </li>
+                    <li class="flex items-center">
+                        <span class="text-[#E76F51] text-xl mr-2">●</span>
+                        <span>24時間の緊急対応費込み</span>
+                    </li>
+                    <li class="flex items-center">
+                        <span class="text-[#2A9D8F] text-xl mr-2">●</span>
+                        <span>プロによる栄養管理</span>
+                    </li>
+                </ul>
+            </div>
+            <div>
+                <div class="chart-container">
+                    <canvas id="costChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Quality of Life Radar -->
+        <section class="bg-[#264653] text-white rounded-lg shadow-xl p-8">
+            <div class="text-center mb-8">
+                <h3 class="text-2xl font-bold text-[#E9C46A]">🌟 入居者の満足度：生活の質（QoL）の変化</h3>
+                <p class="opacity-90 mt-2">実際に施設に移り住んだ方々が感じているメリット</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                <div class="chart-container bg-white bg-opacity-10 backdrop-blur-sm border border-white/20">
+                    <canvas id="satisfactionRadar"></canvas>
+                </div>
+                <div class="space-y-6">
+                    <div class="flex items-start">
+                        <div class="text-3xl mr-4">🤝</div>
+                        <div>
+                            <h4 class="font-bold text-[#E9C46A] text-lg">孤独感の解消</h4>
+                            <p class="text-sm opacity-90">「一人じゃない」という安心感が、心の健康を保ちます。</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="text-3xl mr-4">🥗</div>
+                        <div>
+                            <h4 class="font-bold text-[#E9C46A] text-lg">栄養バランス</h4>
+                            <p class="text-sm opacity-90">自分では作るのが大変な、バランスの良い食事が毎日提供されます。</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="text-3xl mr-4">🏥</div>
+                        <div>
+                            <h4 class="font-bold text-[#E9C46A] text-lg">医療連携</h4>
+                            <p class="text-sm opacity-90">体調が悪くなった時、すぐに相談できる専門家が近くにいます。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center py-12 border-t border-gray-300 mt-8">
+            <h2 class="text-2xl font-bold text-[#2A9D8F] mb-4">一歩踏み出す勇気を</h2>
+            <p class="max-w-2xl mx-auto text-gray-600 mb-8">
+                施設への入居は「人生の終わり」ではなく、<br>
+                「安心と快適さを手に入れる新しいスタート」です。<br>
+                一度、見学に行ってみませんか？
+            </p>
+            <div class="inline-block bg-[#E76F51] text-white px-8 py-3 rounded-full font-bold shadow-lg">
+                家族みんなでサポートします
+            </div>
+        </footer>
+
+    </main>
+
+    <!-- JavaScript for Charts -->
+    <script>
+        // Chart Global Defaults
+        Chart.defaults.font.family = "'Noto Sans JP', sans-serif";
+        Chart.defaults.color = '#264653';
+        Chart.defaults.scale.grid.color = '#e5e5e5';
+
+        // --- Utility: Label Wrapping Logic ---
+        // For Japanese, we split by character count since spaces are rare
+        function wrapLabel(str, maxChars) {
+            if (str.length <= maxChars) return str;
+            const chunks = [];
+            for (let i = 0; i < str.length; i += maxChars) {
+                chunks.push(str.substring(i, i + maxChars));
+            }
+            return chunks;
+        }
+
+        // --- Common Tooltip Configuration ---
+        const commonTooltip = {
+            callbacks: {
+                title: function(tooltipItems) {
+                    const item = tooltipItems[0];
+                    let label = item.chart.data.labels[item.dataIndex];
+                    if (Array.isArray(label)) {
+                        return label.join(''); // Join back for tooltip title
+                    } else {
+                        return label;
+                    }
+                }
+            }
+        };
+
+        // 1. Fall Risk Chart (Donut)
+        const ctxFall = document.getElementById('fallRiskChart').getContext('2d');
+        new Chart(ctxFall, {
+            type: 'doughnut',
+            data: {
+                labels: ['自宅 (庭・居室)', '公共施設', '道路', 'その他'],
+                datasets: [{
+                    data: [77, 5, 10, 8], // Illustrative data based on typical stats
+                    backgroundColor: [
+                        '#E76F51', // Home - High Risk color
+                        '#2A9D8F',
+                        '#E9C46A',
+                        '#264653'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    title: {
+                        display: true,
+                        text: wrapLabel('高齢者の転倒事故の発生場所割合', 15),
+                        font: { size: 16 }
+                    },
+                    tooltip: commonTooltip
+                }
+            }
+        });
+
+        // 2. Lifestyle Comparison (Stacked Horizontal Bar)
+        const ctxLife = document.getElementById('lifestyleChart').getContext('2d');
+        new Chart(ctxLife, {
+            type: 'bar',
+            data: {
+                labels: ['自宅での独り暮らし', '施設での生活'],
+                datasets: [
+                    {
+                        label: '家事・雑用',
+                        data: [50, 0],
+                        backgroundColor: '#8d99ae',
+                    },
+                    {
+                        label: '不安・悩み',
+                        data: [30, 5],
+                        backgroundColor: '#E76F51',
+                    },
+                    {
+                        label: '趣味・交流・休息',
+                        data: [20, 95],
+                        backgroundColor: '#2A9D8F',
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y', // Horizontal bar
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { stacked: true, max: 100, title: { display: true, text: '1日の時間の使い方 (%)' } },
+                    y: { stacked: true }
+                },
+                plugins: {
+                    tooltip: commonTooltip,
+                    legend: { position: 'bottom' },
+                    title: {
+                        display: true,
+                        text: '自由時間の比較',
+                        font: { size: 16 }
+                    }
+                }
+            }
+        });
+
+        // 3. Cost Chart (Bar Comparison)
+        const ctxCost = document.getElementById('costChart').getContext('2d');
+        new Chart(ctxCost, {
+            type: 'bar',
+            data: {
+                labels: [wrapLabel('自宅（介護＋生活費＋修理費）', 10), wrapLabel('施設（定額サービス）', 10)],
+                datasets: [{
+                    label: '月額換算費用イメージ',
+                    data: [22, 18], // Abstract units (e.g., 10,000 yen units)
+                    backgroundColor: ['#264653', '#E9C46A'],
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, display: false } // Abstract comparison
+                },
+                plugins: {
+                    tooltip: commonTooltip,
+                    legend: { display: false },
+                    title: {
+                        display: true,
+                        text: '経済的な負担感の比較',
+                        font: { size: 16 }
+                    },
+                    subtitle: {
+                        display: true,
+                        text: '※突発的な出費（家の修繕等）を含めると施設の方が安定します',
+                        padding: { bottom: 10 }
+                    }
+                }
+            }
+        });
+
+        // 4. Satisfaction Radar Chart
+        const ctxRadar = document.getElementById('satisfactionRadar').getContext('2d');
+        new Chart(ctxRadar, {
+            type: 'radar',
+            data: {
+                labels: ['身体の安全', '食事の質', '友人関係', '精神的安定', '自分らしさ'],
+                datasets: [{
+                    label: '施設入居後',
+                    data: [90, 85, 80, 95, 85],
+                    fill: true,
+                    backgroundColor: 'rgba(233, 196, 106, 0.5)', // Accent Yellow with opacity
+                    borderColor: '#E9C46A',
+                    pointBackgroundColor: '#E9C46A',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: '#E9C46A'
+                }, {
+                    label: '自宅（現在）',
+                    data: [40, 60, 30, 40, 70],
+                    fill: true,
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    borderColor: '#ccc',
+                    pointBackgroundColor: '#ccc',
+                    borderDash: [5, 5]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: { color: 'rgba(255, 255, 255, 0.2)' },
+                        grid: { color: 'rgba(255, 255, 255, 0.2)' },
+                        pointLabels: {
+                            color: 'white',
+                            font: { size: 12 }
+                        },
+                        ticks: { display: false, backdropColor: 'transparent' }
+                    }
+                },
+                plugins: {
+                    tooltip: commonTooltip,
+                    legend: {
+                        labels: { color: 'white' }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
