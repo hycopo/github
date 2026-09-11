@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Ultra Smooth Orb Puzzle - Slime Edition</title>
+<title>Ultra Smooth Orb Puzzle - Infinite RPG Edition</title>
 <style>
   * {
     box-sizing: border-box;
@@ -37,25 +37,26 @@
   
   /* スコアヘッダー */
   .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
     width: 100%;
-    padding: 6px 16px;
+    padding: 8px 14px;
     background: rgba(255, 255, 255, 0.06);
     backdrop-filter: blur(12px);
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.12);
+    text-align: center;
   }
   .stat-label {
-    font-size: 10px;
+    font-size: 9px;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
+    letter-spacing: 1px;
     color: #94a3b8;
     font-weight: 700;
   }
   .stat-value {
-    font-size: 22px;
+    font-size: 18px;
     font-weight: 900;
     font-variant-numeric: tabular-nums;
   }
@@ -107,6 +108,14 @@
     color: #04121e;
     box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
   }
+  .danger-btn {
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+  .danger-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+  }
 
   /* タイマーゲージ */
   #timer-bar-container {
@@ -150,6 +159,10 @@
     font-size: 11px;
     color: #64748b;
     text-align: center;
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0 4px;
   }
 </style>
 </head>
@@ -161,8 +174,12 @@
       <div class="stat-label">Max Combo</div>
       <div class="stat-value" id="max-combo" style="color: #fbbf24;">0</div>
     </div>
-    <div style="text-align: right;">
-      <div class="stat-label">Total Damage</div>
+    <div>
+      <div class="stat-label">Defeats</div>
+      <div class="stat-value" id="defeat-count" style="color: #a855f7;">0</div>
+    </div>
+    <div>
+      <div class="stat-label">Total Dmg</div>
       <div class="stat-value" id="total-damage" style="color: #f43f5e;">0</div>
     </div>
   </div>
@@ -201,10 +218,42 @@
   </div>
 
   <canvas id="canvas"></canvas>
-  <div class="tips">スライム君をつつくと「ぷにっ」と反応！ 連鎖で特大ダメージを叩き込もう</div>
+  <div class="tips">
+    <span>💾 進行データ自動保存中</span>
+    <button class="opt-btn danger-btn" id="reset-data-btn" style="font-size: 9px; padding: 1px 5px;">データ初期化</button>
+  </div>
 </div>
 
 <script>
+// --- ローカルストレージ セーブマネージャー ---
+const SAVE_KEY = 'ultra_puzzle_save_v2';
+
+class SaveManager {
+  static load() {
+    try {
+      const data = localStorage.getItem(SAVE_KEY);
+      if (data) return JSON.parse(data);
+    } catch (e) {
+      console.warn('Failed to load save data', e);
+    }
+    return null;
+  }
+
+  static save(gameData) {
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(gameData));
+    } catch (e) {
+      console.warn('Failed to save data', e);
+    }
+  }
+
+  static clear() {
+    try {
+      localStorage.removeItem(SAVE_KEY);
+    } catch (e) {}
+  }
+}
+
 // --- Web Audio API サウンドシステム ---
 class SoundManager {
   constructor() {
@@ -255,7 +304,6 @@ class SoundManager {
     osc.stop(now + 0.05);
   }
 
-  // スライムをつついた時の「ぷにっ」音
   playPoke() {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
@@ -274,57 +322,54 @@ class SoundManager {
     osc.stop(now + 0.12);
   }
 
-  // スライムへの打撃ヒット音
   playHit(combo) {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
-    
-    // バシィッという打撃ノイズ
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(220 + combo * 20, now);
-    osc.frequency.exponentialRampToValueAtTime(40, now + 0.09);
+    osc.frequency.setValueAtTime(200 + Math.min(combo * 25, 400), now);
+    osc.frequency.exponentialRampToValueAtTime(35, now + 0.1);
 
-    gain.gain.setValueAtTime(0.2, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+    const vol = Math.min(0.18 + combo * 0.015, 0.45);
+    gain.gain.setValueAtTime(vol, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
 
     osc.connect(gain);
     gain.connect(this.ctx.destination);
     osc.start(now);
-    osc.stop(now + 0.09);
+    osc.stop(now + 0.1);
   }
 
-  // スライム撃破ファンファーレ音
   playDefeat() {
     if (!this.ctx) return;
-    const notes = [523.25, 659.25, 783.99, 1046.50]; // C E G C
+    const notes = [523.25, 659.25, 783.99, 1046.50];
     notes.forEach((freq, i) => {
       const now = this.ctx.currentTime + i * 0.07;
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(freq, now);
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      gain.gain.setValueAtTime(0.22, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
       osc.connect(gain);
       gain.connect(this.ctx.destination);
       osc.start(now);
-      osc.stop(now + 0.25);
+      osc.stop(now + 0.28);
     });
   }
 
-  // 連鎖オクターブ無限上昇シンセ
   playCombo(comboCount) {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
 
+    // サブベース
     const kickOsc = this.ctx.createOscillator();
     const kickGain = this.ctx.createGain();
     kickOsc.type = 'sine';
     kickOsc.frequency.setValueAtTime(120, now);
     kickOsc.frequency.exponentialRampToValueAtTime(30, now + 0.18);
-    const kickVol = Math.min(0.18 + comboCount * 0.015, 0.42);
+    const kickVol = Math.min(0.18 + comboCount * 0.015, 0.45);
     kickGain.gain.setValueAtTime(kickVol, now);
     kickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
     kickOsc.connect(kickGain);
@@ -332,6 +377,7 @@ class SoundManager {
     kickOsc.start(now);
     kickOsc.stop(now + 0.2);
 
+    // オクターブ上昇和音
     const scale = [0, 2, 4, 7, 9];
     const octave = Math.floor((comboCount - 1) / scale.length);
     const noteInOct = scale[(comboCount - 1) % scale.length];
@@ -344,7 +390,7 @@ class SoundManager {
       osc.type = i === 0 ? 'sine' : 'triangle';
       osc.frequency.setValueAtTime(baseFreq * interval, now);
 
-      const dur = 0.35 + Math.min(comboCount * 0.02, 0.3);
+      const dur = 0.35 + Math.min(comboCount * 0.02, 0.35);
       gain.gain.setValueAtTime(0.18 / (i + 1), now);
       gain.gain.exponentialRampToValueAtTime(0.0005, now + dur);
 
@@ -367,7 +413,7 @@ const ALL_ORBS = {
 };
 const ALL_KEYS = Object.keys(ALL_ORBS);
 
-// --- パーティクル・エフェクトクラス群 ---
+// --- パーティクル・エフェクトクラス ---
 class Particle {
   constructor(x, y, color, isStar = false) {
     this.x = x;
@@ -439,7 +485,6 @@ class Shockwave {
   }
 }
 
-// ドロップ消滅からスライムへ向かって飛ぶ攻撃弾
 class AttackProjectile {
   constructor(startX, startY, targetX, targetY, color, onHit) {
     this.x = startX;
@@ -449,7 +494,7 @@ class AttackProjectile {
     this.color = color;
     this.onHit = onHit;
     this.progress = 0;
-    this.speed = 4.2; // 0.24秒で到達
+    this.speed = 4.2;
   }
   update(dt) {
     this.progress += this.speed * dt;
@@ -461,7 +506,6 @@ class AttackProjectile {
   }
   draw(ctx) {
     const p = this.progress;
-    // やや外側に湾曲するイージング弾道
     const currentX = this.x + (this.targetX - this.x) * p;
     const currentY = this.y + (this.targetY - this.y) * p - Math.sin(p * Math.PI) * 45;
 
@@ -478,12 +522,12 @@ class AttackProjectile {
 
 // --- 無抵抗スライム君クラス ---
 class SlimeEnemy {
-  constructor(game) {
+  constructor(game, savedData = null) {
     this.game = game;
-    this.level = 1;
-    this.maxHp = 100000;
-    this.hp = this.maxHp;
-    this.displayHp = this.maxHp;
+    this.level = savedData?.level || 1;
+    this.maxHp = savedData?.maxHp || 150000;
+    this.hp = savedData?.hp !== undefined ? savedData.hp : this.maxHp;
+    this.displayHp = this.hp;
     
     this.x = 0;
     this.y = 75;
@@ -493,18 +537,15 @@ class SlimeEnemy {
     this.squishY = 1.0;
     this.wobbleTimer = 0;
     this.hitFlash = 0;
-    this.state = 'ALIVE'; // 'ALIVE', 'DEFEATED'
+    this.state = 'ALIVE';
     this.respawnTimer = 0;
   }
 
   update(dt) {
     this.wobbleTimer += dt * 3.5;
-
-    // HPゲージのスムーズ補間
     this.displayHp += (this.hp - this.displayHp) * (1 - Math.exp(-12 * dt));
     this.hitFlash = Math.max(0, this.hitFlash - 4.5 * dt);
 
-    // スライムの弾性復元
     const squishFactor = 1 - Math.exp(-16 * dt);
     this.squishX += (1.0 - this.squishX) * squishFactor;
     this.squishY += (1.0 - this.squishY) * squishFactor;
@@ -534,7 +575,7 @@ class SlimeEnemy {
     });
   }
 
-  takeDamage(amount, color) {
+  takeDamage(amount, color, multiplierText) {
     if (this.state === 'DEFEATED') return;
 
     this.hp = Math.max(0, this.hp - amount);
@@ -542,19 +583,23 @@ class SlimeEnemy {
     this.squishY = 0.6;
     this.hitFlash = 1.0;
     this.game.totalDamage += amount;
-    this.game.totalDamageDisplay.innerText = this.game.totalDamage.toLocaleString();
+    this.game.totalDamageDisplay.innerText = this.game.formatNumber(this.game.totalDamage);
 
-    // ダメージテキストポップアップ
+    // ★倍率＆ダメージポップアップ★
     this.game.floatingTexts.push({
-      text: amount.toLocaleString(),
+      text: `${amount.toLocaleString()} dmg`,
+      subText: multiplierText,
       x: this.x + (Math.random() - 0.5) * 60,
       y: this.y - 15 + (Math.random() - 0.5) * 20,
       vy: -130,
       alpha: 1.0,
-      scale: amount > 50000 ? 1.6 : 1.1,
+      scale: amount > 500000 ? 1.6 : (amount > 100000 ? 1.3 : 1.05),
       color: color,
-      isMega: amount > 50000
+      isMega: amount > 500000
     });
+
+    // セーブ実行
+    this.game.saveProgress();
 
     if (this.hp <= 0 && this.state === 'ALIVE') {
       this.die();
@@ -567,14 +612,16 @@ class SlimeEnemy {
     this.squishX = 1.6;
     this.squishY = 0.3;
     this.game.sound.playDefeat();
+    this.game.defeatCount++;
+    this.game.defeatCountDisplay.innerText = this.game.defeatCount;
 
-    // 撃破スターパーティクル放出
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 16; i++) {
       this.game.particles.push(new Particle(this.x, this.y, '#fde047', true));
     }
 
     this.game.floatingTexts.push({
-      text: '💥 LEVEL UP! 💥',
+      text: '💥 DEFEATED! 💥',
+      subText: `Next: Lv.${this.level + 1}`,
       x: this.x,
       y: this.y - 30,
       vy: -70,
@@ -583,16 +630,20 @@ class SlimeEnemy {
       color: '#facc15',
       isMega: true
     });
+
+    this.game.saveProgress();
   }
 
   respawn() {
     this.level++;
-    this.maxHp = Math.floor(this.maxHp * 1.5);
+    // レベルが上がるにつれてHPが指数関数的にスケール
+    this.maxHp = Math.floor(150000 * Math.pow(1.35, this.level - 1));
     this.hp = this.maxHp;
     this.displayHp = this.maxHp;
     this.state = 'ALIVE';
     this.squishX = 0.6;
-    this.squishY = 1.4; // 飛び跳ねるように登場
+    this.squishY = 1.4;
+    this.game.saveProgress();
   }
 
   draw(ctx) {
@@ -600,20 +651,18 @@ class SlimeEnemy {
     const sx = this.squishX + breathing;
     const sy = this.squishY - breathing;
 
-    // --- HPバー描画 ---
-    const barWidth = 190;
-    const barHeight = 7;
+    // HPゲージ
+    const barWidth = 200;
+    const barHeight = 8;
     const barX = this.x - barWidth / 2;
-    const barY = 16;
+    const barY = 15;
 
     ctx.save();
-    // バー背景
     ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
     ctx.beginPath();
     ctx.roundRect(barX, barY, barWidth, barHeight, 4);
     ctx.fill();
 
-    // バー中身
     const hpRatio = Math.max(0, Math.min(1, this.displayHp / this.maxHp));
     const hpGrad = ctx.createLinearGradient(barX, 0, barX + barWidth, 0);
     hpGrad.addColorStop(0, '#22c55e');
@@ -624,28 +673,25 @@ class SlimeEnemy {
     ctx.roundRect(barX, barY, barWidth * hpRatio, barHeight, 4);
     ctx.fill();
 
-    // スライム君名前・HPテキスト
     ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#cbd5e1';
     const statusTxt = this.state === 'DEFEATED' ? '復活準備中...' : `Lv.${this.level} 無抵抗スライム君`;
-    ctx.fillText(`${statusTxt} (${Math.ceil(this.displayHp).toLocaleString()} / ${this.maxHp.toLocaleString()})`, this.x, barY - 5);
+    ctx.fillText(`${statusTxt} (${this.game.formatNumber(Math.ceil(this.displayHp))} / ${this.game.formatNumber(this.maxHp)})`, this.x, barY - 5);
     ctx.restore();
 
-    // --- スライム本体描画 ---
+    // スライム本体
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.scale(sx, sy);
 
     const r = this.radius;
 
-    // 影
     ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
     ctx.beginPath();
     ctx.ellipse(0, r * 0.85, r * 0.9, r * 0.25, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // スライムのプルプルしたティアドロップボディ
     ctx.beginPath();
     ctx.moveTo(0, -r * 1.08);
     ctx.bezierCurveTo(r * 0.45, -r * 0.7, r * 1.15, -r * 0.1, r * 1.15, r * 0.45);
@@ -653,7 +699,6 @@ class SlimeEnemy {
     ctx.bezierCurveTo(-r * 1.15, -r * 0.1, -r * 0.45, -r * 0.7, 0, -r * 1.08);
     ctx.closePath();
 
-    // スライムグラデーション
     const slimeGrad = ctx.createRadialGradient(-r * 0.3, -r * 0.2, 5, 0, 0, r * 1.2);
     if (this.hitFlash > 0.05) {
       slimeGrad.addColorStop(0, '#ffffff');
@@ -668,49 +713,41 @@ class SlimeEnemy {
     ctx.shadowBlur = 15;
     ctx.fill();
 
-    // ハイライトツヤ
     ctx.shadowColor = 'transparent';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
     ctx.beginPath();
     ctx.ellipse(-r * 0.35, -r * 0.38, r * 0.28, r * 0.16, -Math.PI / 4, 0, Math.PI * 2);
     ctx.fill();
 
-    // ほっぺた（ピンクチーク）
     ctx.fillStyle = 'rgba(244, 114, 182, 0.55)';
     ctx.beginPath();
     ctx.arc(-r * 0.52, r * 0.2, 6, 0, Math.PI * 2);
     ctx.arc(r * 0.52, r * 0.2, 6, 0, Math.PI * 2);
     ctx.fill();
 
-    // 顔（表情）
     ctx.fillStyle = '#0f172a';
     if (this.state === 'DEFEATED') {
-      // やられ顔 ( x x )
       ctx.font = 'bold 16px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('x   x', 0, r * 0.05);
     } else if (this.hitFlash > 0.3) {
-      // 痛がり顔 ( > < )
       ctx.font = 'bold 16px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('>  <', 0, r * 0.05);
     } else {
-      // つぶらな瞳
       ctx.beginPath();
       ctx.arc(-r * 0.28, r * 0.02, 4.5, 0, Math.PI * 2);
       ctx.arc(r * 0.28, r * 0.02, 4.5, 0, Math.PI * 2);
       ctx.fill();
 
-      // 瞳のハイライト
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.arc(-r * 0.28 - 1.2, r * 0.02 - 1.5, 1.8, 0, Math.PI * 2);
       ctx.arc(r * 0.28 - 1.2, r * 0.02 - 1.5, 1.8, 0, Math.PI * 2);
       ctx.fill();
 
-      // にっこり口
       ctx.strokeStyle = '#0f172a';
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -730,16 +767,27 @@ class PuzzleGame {
     this.timerBar = document.getElementById('timer-bar');
     this.totalDamageDisplay = document.getElementById('total-damage');
     this.maxComboDisplay = document.getElementById('max-combo');
+    this.defeatCountDisplay = document.getElementById('defeat-count');
     
-    // 設定
-    this.cols = 6;
-    this.rows = 5;
-    this.maxTime = Infinity; // デフォルト無制限
-    this.colorCount = 6;
-    
-    this.battleHeight = 135; // 上部スライムバトルエリアの高さ
+    // セーブデータ読み込み
+    const saved = SaveManager.load();
+
+    this.cols = saved?.cols || 6;
+    this.rows = saved?.rows || 5;
+    this.maxTime = saved?.maxTime !== undefined ? saved.maxTime : Infinity;
+    this.colorCount = saved?.colorCount || 6;
+
+    this.maxCombo = saved?.maxCombo || 0;
+    this.defeatCount = saved?.defeatCount || 0;
+    this.totalDamage = saved?.totalDamage || 0;
+
+    this.maxComboDisplay.innerText = this.maxCombo;
+    this.defeatCountDisplay.innerText = this.defeatCount;
+    this.totalDamageDisplay.innerText = this.formatNumber(this.totalDamage);
+
+    this.battleHeight = 135;
     this.sound = new SoundManager();
-    this.slime = new SlimeEnemy(this);
+    this.slime = new SlimeEnemy(this, saved?.slime);
     
     this.particles = [];
     this.shockwaves = [];
@@ -755,8 +803,6 @@ class PuzzleGame {
     this.timer = this.maxTime;
     
     this.comboCount = 0;
-    this.maxCombo = 0;
-    this.totalDamage = 0;
     this.shakeAmount = 0;
     
     this.resolveQueue = [];
@@ -770,6 +816,30 @@ class PuzzleGame {
     this.bindEvents();
 
     requestAnimationFrame((t) => this.gameLoop(t));
+  }
+
+  saveProgress() {
+    SaveManager.save({
+      cols: this.cols,
+      rows: this.rows,
+      maxTime: this.maxTime,
+      colorCount: this.colorCount,
+      maxCombo: this.maxCombo,
+      defeatCount: this.defeatCount,
+      totalDamage: this.totalDamage,
+      slime: {
+        level: this.slime.level,
+        hp: this.slime.hp,
+        maxHp: this.slime.maxHp
+      }
+    });
+  }
+
+  formatNumber(num) {
+    if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+    if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+    if (num >= 1e4) return (num / 1e3).toFixed(1) + 'k';
+    return num.toLocaleString();
   }
 
   getActiveKeys() {
@@ -793,9 +863,11 @@ class PuzzleGame {
   }
 
   initControls() {
-    // 盤面サイズ
+    // セーブされていた設定状態をボタンに反映
     const sizeBtns = document.querySelectorAll('#size-selector .opt-btn');
     sizeBtns.forEach(btn => {
+      const c = parseInt(btn.dataset.cols, 10);
+      btn.classList.toggle('active', c === this.cols);
       btn.addEventListener('click', () => {
         sizeBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
@@ -803,16 +875,18 @@ class PuzzleGame {
         this.rows = parseInt(btn.dataset.rows, 10);
         this.initCanvasSize();
         this.resetGame();
+        this.saveProgress();
       });
     });
 
-    // 時間
     const timeBtns = document.querySelectorAll('#time-selector .opt-btn');
     timeBtns.forEach(btn => {
+      const val = btn.dataset.val === 'Infinity' ? Infinity : parseFloat(btn.dataset.val);
+      btn.classList.toggle('active', val === this.maxTime);
       btn.addEventListener('click', () => {
         timeBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        this.maxTime = btn.dataset.val === 'Infinity' ? Infinity : parseFloat(btn.dataset.val);
+        this.maxTime = val;
         this.timer = this.maxTime;
         
         if (this.maxTime === Infinity) {
@@ -822,18 +896,35 @@ class PuzzleGame {
           this.timerBar.classList.remove('infinite');
           this.timerBar.style.transform = 'scaleX(1)';
         }
+        this.saveProgress();
       });
     });
 
-    // 色数
+    if (this.maxTime === Infinity) {
+      this.timerBar.classList.add('infinite');
+    } else {
+      this.timerBar.classList.remove('infinite');
+    }
+
     const colorBtns = document.querySelectorAll('#color-selector .opt-btn');
     colorBtns.forEach(btn => {
+      const count = parseInt(btn.dataset.val, 10);
+      btn.classList.toggle('active', count === this.colorCount);
       btn.addEventListener('click', () => {
         colorBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        this.colorCount = parseInt(btn.dataset.val, 10);
+        this.colorCount = count;
         this.resetGame();
+        this.saveProgress();
       });
+    });
+
+    // データ初期化ボタン
+    document.getElementById('reset-data-btn').addEventListener('click', () => {
+      if (confirm('ゲーム進行データ（レベル、討伐数、ダメージなど）をリセットしますか？')) {
+        SaveManager.clear();
+        location.reload();
+      }
     });
   }
 
@@ -901,12 +992,9 @@ class PuzzleGame {
     const startDrag = (pos) => {
       this.sound.init();
 
-      // スライム君を直接タップした場合のインタラクション
       if (pos.y < this.battleHeight) {
         const dist = Math.hypot(pos.x - this.slime.x, pos.y - this.slime.y);
-        if (dist < 50) {
-          this.slime.poke();
-        }
+        if (dist < 50) this.slime.poke();
         return;
       }
 
@@ -984,7 +1072,6 @@ class PuzzleGame {
   findMatches() {
     const matchedGrid = Array.from({ length: this.rows }, () => Array(this.cols).fill(false));
 
-    // 横
     for (let r = 0; r < this.rows; r++) {
       let count = 1;
       for (let c = 1; c < this.cols; c++) {
@@ -1004,7 +1091,6 @@ class PuzzleGame {
       }
     }
 
-    // 縦
     for (let c = 0; c < this.cols; c++) {
       let count = 1;
       for (let r = 1; r < this.rows; r++) {
@@ -1073,6 +1159,7 @@ class PuzzleGame {
       if (this.comboCount > this.maxCombo) {
         this.maxCombo = this.comboCount;
         this.maxComboDisplay.innerText = this.maxCombo;
+        this.saveProgress();
       }
     }
   }
@@ -1094,7 +1181,6 @@ class PuzzleGame {
       this.shakeAmount = Math.max(0, this.shakeAmount - 28 * dt);
     }
 
-    // タイマー更新（★無制限モード時は減少しない★）
     if (this.state === 'DRAGGING' && this.maxTime !== Infinity) {
       this.timer -= dt;
       const progress = Math.max(0, this.timer / this.maxTime);
@@ -1112,13 +1198,11 @@ class PuzzleGame {
       }
     }
 
-    // 軌跡
     for (let i = this.trail.length - 1; i >= 0; i--) {
       this.trail[i].life -= 3.5 * dt;
       if (this.trail[i].life <= 0) this.trail.splice(i, 1);
     }
 
-    // 弾道（攻撃弾）更新
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       if (this.projectiles[i].update(dt)) {
         this.projectiles.splice(i, 1);
@@ -1157,7 +1241,7 @@ class PuzzleGame {
       }
     }
 
-    // 連鎖処理
+    // 連鎖処理＆ダメージ強化計算
     if (this.state === 'RESOLVING') {
       this.stepTimer -= dt;
 
@@ -1167,11 +1251,10 @@ class PuzzleGame {
           this.comboCount++;
           
           this.sound.playCombo(this.comboCount);
-          this.shakeAmount = Math.min(5 + this.comboCount * 2.0, 22);
+          this.shakeAmount = Math.min(5 + this.comboCount * 2.2, 26);
 
           let avgX = 0, avgY = 0;
           let mainColor = '#fff';
-          let orbType = 'fire';
 
           for (const pos of cluster) {
             const orb = this.grid[pos.r][pos.c];
@@ -1179,7 +1262,6 @@ class PuzzleGame {
               avgX += orb.x;
               avgY += orb.y;
               mainColor = ALL_ORBS[orb.type].glow;
-              orbType = orb.type;
 
               this.shockwaves.push(new Shockwave(orb.x, orb.y, mainColor));
               for (let i = 0; i < 16; i++) {
@@ -1193,9 +1275,21 @@ class PuzzleGame {
           avgX /= cluster.length;
           avgY /= cluster.length;
 
-          // コンボ表示
+          // ★コンボによるダメージ強化式（インフレ倍率）★
+          // 1コンボ=1.0x, 5コンボ=2.6x, 10コンボ=8.5x, 15コンボ=28x, 20コンボ=90x+
+          const baseMultiplier = 1 + (this.comboCount - 1) * 0.25;
+          const exponentialBonus = Math.pow(1.18, Math.max(0, this.comboCount - 3));
+          const totalMultiplier = baseMultiplier * exponentialBonus;
+
+          // 基礎値（個数ボーナス込）
+          const baseValue = (3000 + (cluster.length - 3) * 1500) * (1 + (this.slime.level - 1) * 0.1);
+          const finalDamage = Math.floor(baseValue * totalMultiplier);
+
+          const multString = `x${totalMultiplier.toFixed(1)}倍!`;
+
           this.floatingTexts.push({
             text: `${this.comboCount} COMBO!`,
+            subText: multString,
             x: avgX,
             y: avgY,
             vy: -110,
@@ -1205,15 +1299,14 @@ class PuzzleGame {
             isMega: this.comboCount >= 5
           });
 
-          // ★スライムへの攻撃エネルギー弾を射出★
-          const damage = Math.floor((cluster.length * 2200 + Math.random() * 800) * (1 + this.comboCount * 0.45));
+          // 攻撃弾発射
           this.projectiles.push(new AttackProjectile(
             avgX, avgY,
             this.slime.x, this.slime.y,
             mainColor,
             () => {
               this.sound.playHit(this.comboCount);
-              this.slime.takeDamage(damage, mainColor);
+              this.slime.takeDamage(finalDamage, mainColor, multString);
               for (let i = 0; i < 8; i++) {
                 this.particles.push(new Particle(this.slime.x, this.slime.y, mainColor));
               }
@@ -1285,14 +1378,12 @@ class PuzzleGame {
       this.ctx.translate(offsetX, offsetY);
     }
 
-    // 上部バトル背景
     const bgGrad = this.ctx.createLinearGradient(0, 0, 0, this.battleHeight);
     bgGrad.addColorStop(0, 'rgba(15, 23, 42, 0.8)');
     bgGrad.addColorStop(1, 'rgba(30, 41, 59, 0.4)');
     this.ctx.fillStyle = bgGrad;
     this.ctx.fillRect(0, 0, this.width, this.battleHeight);
 
-    // バトルエリアとパズル盤面の境界線
     this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
     this.ctx.lineWidth = 1.5;
     this.ctx.beginPath();
@@ -1300,10 +1391,8 @@ class PuzzleGame {
     this.ctx.lineTo(this.width, this.battleHeight);
     this.ctx.stroke();
 
-    // スライム君描画
     this.slime.draw(this.ctx);
 
-    // グリッド枠線
     this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
     this.ctx.lineWidth = 1;
     for (let r = 0; r <= this.rows; r++) {
@@ -1319,7 +1408,6 @@ class PuzzleGame {
       this.ctx.stroke();
     }
 
-    // 操作の光の軌跡
     for (const t of this.trail) {
       this.ctx.save();
       this.ctx.globalAlpha = t.life * 0.45;
@@ -1332,7 +1420,6 @@ class PuzzleGame {
       this.ctx.restore();
     }
 
-    // 通常ドロップ
     for (let r = 0; r < this.rows; r++) {
       for (let c = 0; c < this.cols; c++) {
         const orb = this.grid[r][c];
@@ -1342,21 +1429,17 @@ class PuzzleGame {
       }
     }
 
-    // 攻撃弾
     for (const proj of this.projectiles) proj.draw(this.ctx);
-
-    // 衝撃波・パーティクル
     for (const sw of this.shockwaves) sw.draw(this.ctx);
     for (const p of this.particles) p.draw(this.ctx);
 
-    // ドラッグ中ドロップ
     if (this.selectedOrb) this.drawOrb(this.selectedOrb, true);
 
-    // ポップアップテキスト
+    // ポップアップテキスト（倍率サブテキスト付き）
     for (const ft of this.floatingTexts) {
       this.ctx.save();
       this.ctx.globalAlpha = Math.max(0, ft.alpha);
-      this.ctx.font = `900 ${21 * ft.scale}px sans-serif`;
+      this.ctx.font = `900 ${20 * ft.scale}px sans-serif`;
       this.ctx.textAlign = 'center';
       this.ctx.textBaseline = 'middle';
       this.ctx.fillStyle = '#ffffff';
@@ -1364,10 +1447,10 @@ class PuzzleGame {
       this.ctx.shadowBlur = ft.isMega ? 22 : 10;
       this.ctx.fillText(ft.text, ft.x, ft.y);
 
-      if (ft.isMega) {
-        this.ctx.lineWidth = 1.5;
-        this.ctx.strokeStyle = ft.color;
-        this.ctx.strokeText(ft.text, ft.x, ft.y);
+      if (ft.subText) {
+        this.ctx.font = `bold ${12 * ft.scale}px sans-serif`;
+        this.ctx.fillStyle = ft.isMega ? '#facc15' : '#38bdf8';
+        this.ctx.fillText(ft.subText, ft.x, ft.y + 16 * ft.scale);
       }
       this.ctx.restore();
     }
