@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EWI Solo vs AE-30 vs YDS-150 サックスモード運指対比シミュレーター</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card-bg: #181a20;
+    --panel-bg: #22252e;
+    --border: #313542;
+    --text: #e6e8ec;
+    --text-muted: #8b92a0;
+    --accent-ewi: #ff3366;
+    --accent-ae: #00d2ff;
+    --accent-yds: #00e676;
+    --key-off: #373b47;
+    --key-border: #1e2027;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif; }
+  body { background: var(--bg); color: var(--text); padding: 20px; line-height: 1.5; }
+  .container { max-width: 1240px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+  header p { color: var(--text-muted); font-size: 13px; margin-top: 6px; }
+
+  /* コントロールエリア */
+  .control-section { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 20px; }
+  .section-label { font-size: 13px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .section-label::before { content: ""; display: inline-block; width: 4px; height: 14px; background: #fff; border-radius: 2px; }
+
+  .filter-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .filter-btn { background: var(--panel-bg); color: var(--text-muted); border: 1px solid var(--border); border-radius: 6px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .filter-btn:hover { color: #fff; border-color: #555; }
+  .filter-btn.active { background: #fff; color: #000; border-color: #fff; }
+
+  .notes-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+  .note-chip { background: var(--panel-bg); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 8px 12px; font-size: 13px; font-weight: bold; cursor: pointer; transition: all 0.15s; text-align: center; min-width: 68px; }
+  .note-chip:hover { border-color: #888; transform: translateY(-1px); }
+  .note-chip.active { background: #fff; color: #000; border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,0.4); }
+  .note-chip .sub { display: block; font-size: 10px; font-weight: normal; opacity: 0.7; }
+
+  /* 運指の差異ハイライトバナー */
+  .diff-alert { background: rgba(255, 183, 3, 0.08); border: 1px solid rgba(255, 183, 3, 0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: #ffe082; display: flex; gap: 10px; align-items: flex-start; }
+  .diff-alert strong { color: #ffb703; white-space: nowrap; }
+
+  /* 3機種並列ビジュアライザー */
+  .models-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 900px) { .models-grid { grid-template-columns: 1fr; } }
+
+  .model-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+  .model-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+  .model-card.ewi::before { background: var(--accent-ewi); }
+  .model-card.ae::before { background: var(--accent-ae); }
+  .model-card.yds::before { background: var(--accent-yds); }
+
+  .model-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .model-title { font-size: 15px; font-weight: bold; }
+  .model-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+  .ewi .model-badge { background: rgba(255,51,102,0.15); color: var(--accent-ewi); }
+  .ae .model-badge { background: rgba(0,210,255,0.15); color: var(--accent-ae); }
+  .yds .model-badge { background: rgba(0,230,118,0.15); color: var(--accent-yds); }
+
+  /* 管体グラフィック */
+  .body-view { background: #131418; border-radius: 10px; padding: 16px 12px; display: flex; flex-direction: column; align-items: center; min-height: 480px; position: relative; border: 1px solid #232630; }
+  .view-zone { width: 100%; display: flex; flex-direction: column; align-items: center; margin-bottom: 12px; position: relative; }
+  .zone-title { font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px; }
+
+  /* 汎用キイデザイン */
+  .key-node { border-radius: 50%; background: var(--key-off); border: 2px solid var(--key-border); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; color: #888; transition: all 0.15s; }
+  .key-node.rect { border-radius: 4px; }
+  .key-node.side { border-radius: 12px; width: 34px; height: 16px; font-size: 9px; }
+  .key-row-flex { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin: 3px 0; }
+
+  /* 機種別キイ点灯カラー */
+  .ewi .key-node.active { background: var(--accent-ewi) !important; color: #fff !important; box-shadow: 0 0 10px var(--accent-ewi); border-color: #fff; }
+  .ae .key-node.active { background: var(--accent-ae) !important; color: #000 !important; box-shadow: 0 0 10px var(--accent-ae); border-color: #fff; }
+  .yds .key-node.active { background: var(--accent-yds) !important; color: #000 !important; box-shadow: 0 0 10px var(--accent-yds); border-color: #fff; }
+
+  /* オクターブインジケーター */
+  .oct-indicator { display: flex; gap: 4px; align-items: center; background: #0c0d10; padding: 4px 8px; border-radius: 6px; border: 1px solid #222; margin-bottom: 8px; }
+  .oct-dot { width: 10px; height: 10px; border-radius: 50%; background: #2a2e3a; }
+  .oct-dot.active-oct { background: #fff; box-shadow: 0 0 6px #fff; }
+
+  /* 運指テキスト要約 */
+  .finger-summary { margin-top: 12px; width: 100%; font-size: 12px; background: var(--panel-bg); padding: 10px; border-radius: 6px; border-left: 3px solid #555; }
+  .ewi .finger-summary { border-color: var(--accent-ewi); }
+  .ae .finger-summary { border-color: var(--accent-ae); }
+  .yds .finger-summary { border-color: var(--accent-yds); }
+  .finger-summary strong { color: #fff; display: block; margin-bottom: 2px; }
+
+  /* 一覧対比テーブル */
+  .table-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; overflow-x: auto; }
+  table.comp-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
+  table.comp-table th, table.comp-table td { padding: 10px 12px; border: 1px solid var(--border); }
+  table.comp-table th { background: #20242e; color: #fff; font-weight: 700; white-space: nowrap; }
+  table.comp-table tr:hover { background: rgba(255,255,255,0.03); }
+  .tag-match { color: #a0aec0; }
+  .tag-diff { color: #ffb703; font-weight: bold; background: rgba(255,183,3,0.1); padding: 2px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>サックスモード運指対比ビジュアルシミュレーター</h1>
+    <p>AKAI EWI Solo / Roland Aerophone Pro AE-30 / Yamaha YDS-150</p>
+  </header>
+
+  <!-- 音名セレクター -->
+  <div class="control-section">
+    <div class="section-label">音域フィルター</div>
+    <div class="filter-group" id="filterGroup">
+      <button class="filter-btn active" data-filter="all">全音域</button>
+      <button class="filter-btn" data-filter="low">低音域 (Low A〜C#)</button>
+      <button class="filter-btn" data-filter="mid">中音域 (D〜C#)</button>
+      <button class="filter-btn" data-filter="high">高音・パーム域 (High D〜F#)</button>
+      <button class="filter-btn" data-filter="alt">替え指 (Bb / C)</button>
+    </div>
+
+    <div class="section-label">確認したい音名を選択</div>
+    <div class="notes-grid" id="noteGrid"></div>
+  </div>
+
+  <!-- 相違点ワンポイント解説 -->
+  <div class="diff-alert" id="diffAlert">
+    <strong>💡 運指の差異ポイント：</strong>
+    <span id="diffDesc">音名を選択すると、3機種間の運指や操作の違いがここに表示されます。</span>
+  </div>
+
+  <!-- 3機種ビジュアル比較グリッド -->
+  <div class="models-grid">
+    
+    <!-- YAMAHA YDS-150 -->
+    <div class="model-card yds">
+      <div class="model-header">
+        <div class="model-title">Yamaha YDS-150</div>
+        <div class="model-badge">サックス完全準拠</div>
+      </div>
+      <div class="body-view">
+        <div class="zone-title">背面親指（オクターブ / Low A）</div>
+        <div class="oct-indicator">
+          <div class="key-node rect" id="yds-oct" style="width:28px; height:14px;">Oct</div>
+          <div class="key-node rect" id="yds-lowA" style="width:28px; height:14px; font-size:8px;">LowA</div>
+        </div>
+
+        <div class="zone-title" style="margin-top:8px;">左手パームキイ</div>
+        <div class="key-row-flex">
+          <div class="key-node side" id="yds-pD">D</div>
+          <div class="key-node side" id="yds-pEb">Eb</div>
+          <div class="key-node side" id="yds-pF">F</div>
+        </div>
+
+        <div class="zone-title" style="margin-top:8px;">左手主管＆テーブル</div>
+        <div class="key-row-flex"><div class="key-node" id="yds-1" style="width:30px; height:30px;">1</div></div>
+        <div class="key-row-flex"><div class="key-node rect" id="yds-bis" style="width:14px; height:18px;">Bis</div></div>
+        <div class="key-row-flex"><div class="key-node" id="yds-2" style="width:30px; height:30px;">2</div></div>
+        <div class="key-row-flex"><div class="key-node" id="yds-3" style="width:30px; height:30px;">3</div></div>
+        <div class="key-row-flex">
+          <div class="key-node rect" id="yds-tGs" style="width:18px; height:14px; font-size:8px;">G#</div>
+          <div class="key-node rect" id="yds-tCs" style="width:18px; height:14px; font-size:8px;">C#</div>
+          <div class="key-node rect" id="yds-tB" style="width:18px; height:14px; font-size:8px;">B</div>
+          <div class="key-node rect" id="yds-tBb" style="width:18px; height:14px; font-size:8px;">Bb</div>
+        </div>
+
+        <div class="zone-title" style="margin-top:10px;">右手主管＆サイド</div>
+        <div class="key-row-flex">
+          <div class="key-node" id="yds-4" style="width:30px; height:30px;">4</div>
+          <div class="key-node side" id="yds-sBb">SideBb</div>
+          <div class="key-node side" id="yds-sC">SideC</div>
+        </div>
+        <div class="key-row-flex"><div class="key-node" id="yds-5" style="width:30px; height:30px;">5</div></div>
+        <div class="key-row-flex"><div class="key-node" id="yds-6" style="width:30px; height:30px;">6</div></div>
+        <div class="key-row-flex">
+          <div class="key-node rect" id="yds-Eb" style="width:24px; height:16px;">Eb</div>
+          <div class="key-node rect" id="yds-C" style="width:24px; height:16px;">C</div>
+        </div>
+      </div>
+      <div class="finger-summary">
+        <strong id="yds-sum-title">YDS-150運指</strong>
+        <span id="yds-sum-desc">-</span>
+      </div>
+    </div>
+
+    <!-- ROLAND AE-30 -->
+    <div class="model-card ae">
+      <div class="model-header">
+        <div class="model-title">Roland AE-30</div>
+        <div class="model-badge">サックス配列ボタン</div>
+      </div>
+      <div class="body-view">
+        <div class="zone-title">背面オクターブボタン (4ボタン)</div>
+        <div class="oct-indicator">
+          <div class="key-node rect" id="ae-oct-m2" style="width:18px; height:14px; font-size:8px;">-2</div>
+          <div class="key-node rect" id="ae-oct-m1" style="width:18px; height:14px; font-size:8px;">-1</div>
+          <div class="key-node rect" id="ae-oct-p1" style="width:18px; height:14px; font-size:8px;">+1</div>
+          <div class="key-node rect" id="ae-oct-p2" style="width:18px; height:14px; font-size:8px;">+2</div>
+        </div>
+
+        <div class="zone-title" style="margin-top:8px;">左手パームボタン</div>
+        <div class="key-row-flex">
+          <div class="key-node side" id="ae-pD">D</div>
+          <div class="key-node side" id="ae-pEb">Eb</div>
+          <div class="key-node side" id="ae-pF">F</div>
+        </div>
+
+        <div class="zone-title" style="margin-top:8px;">左手主管＆テーブル</div>
+        <div class="key-row-flex"><div class="key-node" id="ae-1" style="width:30px; height:30px;">1</div></div>
+        <div class="key-row-flex"><div class="key-node rect" id="ae-bis" style="width:14px; height:18px;">Bis</div></div>
+        <div class="key-row-flex"><div class="key-node" id="ae-2" style="width:30px; height:30px;">2</div></div>
+        <div class="key-row-flex"><div class="key-node" id="ae-3" style="width:30px; height:30px;">3</div></div>
+        <div class="key-row-flex">
+          <div class="key-node rect" id="ae-tGs" style="width:18px; height:14px; font-size:8px;">G#</div>
+          <div class="key-node rect" id="ae-tCs" style="width:18px; height:14px; font-size:8px;">C#</div>
+          <div class="key-node rect" id="ae-tB" style="width:18px; height:14px; font-size:8px;">B</div>
+          <div class="key-node rect" id="ae-tBb" style="width:18px; height:14px; font-size:8px;">Bb</div>
+        </div>
+
+        <div class="zone-title" style="margin-top:10px;">右手主管＆サイド</div>
+        <div class="key-row-flex">
+          <div class="key-node" id="ae-4" style="width:30px; height:30px;">4</div>
+          <div class="key-node side" id="ae-sBb">SideBb</div>
+          <div class="key-node side" id="ae-sC">SideC</div>
+        </div>
+        <div class="key-row-flex"><div class="key-node" id="ae-5" style="width:30px; height:30px;">5</div></div>
+        <div class="key-row-flex"><div class="key-node" id="ae-6" style="width:30px; height:30px;">6</div></div>
+        <div class="key-row-flex">
+          <div class="key-node rect" id="ae-Eb" style="width:24px; height:16px;">Eb</div>
+          <div class="key-node rect" id="ae-C" style="width:24px; height:16px;">C</div>
+        </div>
+      </div>
+      <div class="finger-summary">
+        <strong id="ae-sum-title">AE-30運指</strong>
+        <span id="ae-sum-desc">-</span>
+      </div>
+    </div>
+
+    <!-- AKAI EWI SOLO -->
+    <div class="model-card ewi">
+      <div class="model-header">
+        <div class="model-title">AKAI EWI Solo</div>
+        <div class="model-badge">タッチセンサー＆ローラー</div>
+      </div>
+      <div class="body-view">
+        <div class="zone-title">背面オクターブローラー（親指スライド）</div>
+        <div class="oct-indicator">
+          <div class="key-node rect" id="ewi-r-m2" style="width:16px; height:14px; font-size:8px;">R-2</div>
+          <div class="key-node rect" id="ewi-r-m1" style="width:16px; height:14px; font-size:8px;">R-1</div>
+          <div class="key-node rect" id="ewi-r-0" style="width:16px; height:14px; font-size:8px;">R0</div>
+          <div class="key-node rect" id="ewi-r-p1" style="width:16px; height:14px; font-size:8px;">R+1</div>
+          <div class="key-node rect" id="ewi-r-p2" style="width:16px; height:14px; font-size:8px;">R+2</div>
+        </div>
+
+        <div class="zone-title" style="margin-top:8px;">左手タッチプレート</div>
+        <div class="key-row-flex">
+          <div class="key-node rect" id="ewi-k2" style="width:14px; height:24px; font-size:8px;">K2</div>
+          <div class="key-node" id="ewi-k1" style="width:30px; height:30px;">K1</div>
+        </div>
+        <div class="key-row-flex"><div class="key-node" id="ewi-k3" style="width:30px; height:30px;">K3</div></div>
+        <div class="key-row-flex"><div class="key-node" id="ewi-k4" style="width:30px; height:30px;">K4</div></div>
+        <div class="key-row-flex">
+          <div class="key-node side" id="ewi-k5">K5(上)</div>
+          <div class="key-node side" id="ewi-k6">K6(下)</div>
+        </div>
+
+        <div class="zone-title" style="margin-top:10px;">右手タッチプレート</div>
+        <div class="key-row-flex">
+          <div class="key-node side" id="ewi-k7">K7(サイド)</div>
+        </div>
+        <div class="key-row-flex"><div class="key-node" id="ewi-k8" style="width:30px; height:30px;">K8</div></div>
+        <div class="key-row-flex">
+          <div class="key-node" id="ewi-k9" style="width:30px; height:30px;">K9</div>
+          <div class="key-node rect" id="ewi-k10" style="width:12px; height:24px; font-size:8px;">K10</div>
+        </div>
+        <div class="key-row-flex"><div class="key-node" id="ewi-k11" style="width:30px; height:30px;">K11</div></div>
+        <div class="key-row-flex">
+          <div class="key-node rect" id="ewi-k12" style="width:18px; height:16px; font-size:8px;">K12</div>
+          <div class="key-node rect" id="ewi-k13" style="width:18px; height:16px; font-size:8px;">K13</div>
+          <div class="key-node rect" id="ewi-k14" style="width:18px; height:16px; font-size:8px;">K14</div>
+        </div>
+      </div>
+      <div class="finger-summary">
+        <strong id="ewi-sum-title">EWI Solo運指</strong>
+        <span id="ewi-sum-desc">-</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 一覧対比テーブル -->
+  <div class="table-card">
+    <div class="section-label">サックス運指モード 3機種完全対比テーブル</div>
+    <table class="comp-table">
+      <thead>
+        <tr>
+          <th>音名</th>
+          <th>カテゴリ</th>
+          <th>Yamaha YDS-150</th>
+          <th>Roland AE-30</th>
+          <th>AKAI EWI Solo</th>
+          <th>押さえ方の差異・備考</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// データベース定義
+const dataset = [
+  {
+    id: "lowA", name: "Low A", sub: "最低音(バリトン)", category: "low",
+    diff: "YDS-150のみ左親指下に物理Low Aキイを装備。AE-30はカスタムアサイン対応。EWI Soloはオクターブローラーを1段下げてAを演奏します。",
+    yds: { keys: ["yds-1","yds-2","yds-3","yds-4","yds-5","yds-6","yds-tBb","yds-C","yds-lowA"], sum: "[1][2][3][4][5][6] + [Low Bb] + [C] + [Low Aキイ]" },
+    ae:  { keys: ["ae-1","ae-2","ae-3","ae-4","ae-5","ae-6","ae-tBb","ae-C"], sum: "[1][2][3][4][5][6] + [Low Bb] + [C]（+設定ボタン）" },
+    ewi: { keys: ["ewi-r-m1","ewi-k1","ewi-k3"], sum: "【ローラー1段下】 + 通常のA [K1][K3]" }
+  },
+  {
+    id: "lowBb", name: "Low B♭", sub: "標準最低音", category: "low",
+    diff: "3機種とも基本運指は同じですが、EWI Soloはテーブルキイではなく右小指2枚（K13/K14）と左小指K6を同時タッチします。",
+    yds: { keys: ["yds-1","yds-2","yds-3","yds-4","yds-5","yds-6","yds-tBb","yds-C"], sum: "[1][2][3][4][5][6] + 左小指[Bb] + 右小指[C]" },
+    ae:  { keys: ["ae-1","ae-2","ae-3","ae-4","ae-5","ae-6","ae-tBb","ae-C"], sum: "[1][2][3][4][5][6] + 左小指[Bb] + 右小指[C]" },
+    ewi: { keys: ["ewi-r-0","ewi-k1","ewi-k3","ewi-k4","ewi-k6","ewi-k8","ewi-k9","ewi-k11","ewi-k13","ewi-k14"], sum: "[K1][K3][K4][K6] + [K8][K9][K11][K13][K14]" }
+  },
+  {
+    id: "lowC", name: "Low C", sub: "低音ド", category: "low",
+    diff: "基本6穴全押し＋右小指。小指の操作感（物理レバー vs メカニカルボタン vs タッチプレート）以外は同じです。",
+    yds: { keys: ["yds-1","yds-2","yds-3","yds-4","yds-5","yds-6","yds-C"], sum: "[1][2][3][4][5][6] + 右小指[C]" },
+    ae:  { keys: ["ae-1","ae-2","ae-3","ae-4","ae-5","ae-6","ae-C"], sum: "[1][2][3][4][5][6] + 右小指[C]" },
+    ewi: { keys: ["ewi-r-0","ewi-k1","ewi-k3","ewi-k4","ewi-k8","ewi-k9","ewi-k11","ewi-k14"], sum: "[K1][K3][K4] + [K8][K9][K11] + [K14]" }
+  },
+  {
+    id: "midD", name: "D (レ)", sub: "中音レ", category: "mid",
+    diff: "YDS-150とAE-30は左親指のオクターブキイ/ボタンを押します。EWI Soloは親指を上部ローラーへ転がします（6穴は同じ）。",
+    yds: { keys: ["yds-oct","yds-1","yds-2","yds-3","yds-4","yds-5","yds-6"], sum: "[Octキイ] + [1][2][3][4][5][6]" },
+    ae:  { keys: ["ae-oct-p1","ae-1","ae-2","ae-3","ae-4","ae-5","ae-6"], sum: "[Octボタン(+1)] + [1][2][3][4][5][6]" },
+    ewi: { keys: ["ewi-r-p1","ewi-k1","ewi-k3","ewi-k4","ewi-k8","ewi-k9","ewi-k11"], sum: "【ローラー1段上】 + [K1][K3][K4][K8][K9][K11]" }
+  },
+  {
+    id: "midFs", name: "F♯ / G♭", sub: "ファ#", category: "mid",
+    diff: "サックス基本の「右手中指[5]」。3機種とも同じです。",
+    yds: { keys: ["yds-1","yds-2","yds-3","yds-5"], sum: "[1][2][3] + [5]" },
+    ae:  { keys: ["ae-1","ae-2","ae-3","ae-5"], sum: "[1][2][3] + [5]" },
+    ewi: { keys: ["ewi-r-0","ewi-k1","ewi-k3","ewi-k4","ewi-k9"], sum: "[K1][K3][K4] + [K9]" }
+  },
+  {
+    id: "altBbBis", name: "B♭ (ビス)", sub: "替え指Bis", category: "alt",
+    diff: "左手人差し指で[1]と[Bis]の2つのキイを同時に覆う運指。3機種とも対応。",
+    yds: { keys: ["yds-1","yds-bis"], sum: "[1] + [Bis]（人差し指同時押し）" },
+    ae:  { keys: ["ae-1","ae-bis"], sum: "[1] + [Bis]（人差し指同時押し）" },
+    ewi: { keys: ["ewi-r-0","ewi-k1","ewi-k2"], sum: "[K1] + [K2]（人差し指同時タッチ）" }
+  },
+  {
+    id: "altBbSide", name: "B♭ (サイド)", sub: "替え指Side", category: "alt",
+    diff: "【決定的な違い】YDS-150とAE-30は右手側面キイで押せますが、EWI Soloはサイドキイが非搭載のためこの運指は使用できません。",
+    yds: { keys: ["yds-1","yds-sBb"], sum: "[1] + 右手側面[Side Bb]" },
+    ae:  { keys: ["ae-1","ae-sBb"], sum: "[1] + 右手側面[Side Bb]" },
+    ewi: { keys: ["ewi-r-0","ewi-k1","ewi-k7"], sum: "※右手サイド非搭載。K7併用または1+1運指を使用" }
+  },
+  {
+    id: "altBb11", name: "B♭ (1+1)", sub: "ロングBb", category: "alt",
+    diff: "左手人差し指[1]＋右手人差し指[4/K8]。3機種とも完全共通。",
+    yds: { keys: ["yds-1","yds-4"], sum: "[1] + [4]" },
+    ae:  { keys: ["ae-1","ae-4"], sum: "[1] + [4]" },
+    ewi: { keys: ["ewi-r-0","ewi-k1","ewi-k8"], sum: "[K1] + [K8]" }
+  },
+  {
+    id: "altCSide", name: "C (サイド)", sub: "替え指Side C", category: "alt",
+    diff: "【決定的な違い】Bの運指＋右手人差し指側面。EWI Soloは物理サイドキイがないため、基本の中指C[K3]を使用します。",
+    yds: { keys: ["yds-1","yds-sC"], sum: "[1] + 右手側面[Side C]" },
+    ae:  { keys: ["ae-1","ae-sC"], sum: "[1] + 右手側面[Side C]" },
+    ewi: { keys: ["ewi-r-0","ewi-k3"], sum: "※サイドキイ非対応。通常の中指[K3]を使用" }
+  },
+  {
+    id: "midCsOpen", name: "C♯ (全開放)", sub: "開放音", category: "mid",
+    diff: "指をすべて離す全開放。EWI Soloもタッチセンサーから指を浮かせます。",
+    yds: { keys: [], sum: "全開放（キイを押さない）" },
+    ae:  { keys: [], sum: "全開放（ボタンを押さない）" },
+    ewi: { keys: ["ewi-r-0"], sum: "全開放（センサーから指を浮かせる）" }
+  },
+  {
+    id: "highD", name: "High D", sub: "高音パーム", category: "high",
+    diff: "【決定的な違い】YDS-150とAE-30は左手の平でパームDを押しますが、EWI Soloは親指ローラーを1段上げて通常のレを押します。",
+    yds: { keys: ["yds-oct","yds-pD"], sum: "[Octキイ] + 左手手の平[パームD]" },
+    ae:  { keys: ["ae-oct-p1","ae-pD"], sum: "[Octボタン(+1)] + 左手手の平[パームD]" },
+    ewi: { keys: ["ewi-r-p1","ewi-k1","ewi-k3","ewi-k4","ewi-k8","ewi-k9","ewi-k11"], sum: "【ローラー1段上】 + 通常のレ [K1][K3][K4][K8][K9][K11]" }
+  },
+  {
+    id: "highF", name: "High F", sub: "高音パーム", category: "high",
+    diff: "YDS-150/AE-30はパームキイの複合運指。EWI Soloはローラー1段上で通常のファ[K1..K8]を押すだけで発音可能です。",
+    yds: { keys: ["yds-oct","yds-pD","yds-pEb","yds-pF"], sum: "[Oct] + パーム[D] + [Eb] + [F]" },
+    ae:  { keys: ["ae-oct-p1","ae-pD","ae-pEb","ae-pF"], sum: "[Oct(+1)] + パーム[D] + [Eb] + [F] (SAX 1)" },
+    ewi: { keys: ["ewi-r-p1","ewi-k1","ewi-k3","ewi-k4","ewi-k8"], sum: "【ローラー1段上】 + 通常のファ [K1][K3][K4][K8]" }
+  }
+];
+
+let currentFilter = "all";
+let currentNoteId = "midD";
+
+function init() {
+  setupFilters();
+  renderNoteChips();
+  selectNote(currentNoteId);
+  renderTable();
+}
+
+function setupFilters() {
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = btn.dataset.filter;
+      renderNoteChips();
+    });
+  });
+}
+
+function renderNoteChips() {
+  const grid = document.getElementById('noteGrid');
+  grid.innerHTML = '';
+  const filtered = currentFilter === 'all' 
+    ? dataset 
+    : dataset.filter(d => d.category === currentFilter);
+
+  filtered.forEach(item => {
+    const chip = document.createElement('div');
+    chip.className = `note-chip ${item.id === currentNoteId ? 'active' : ''}`;
+    chip.innerHTML = `${item.name}<span class="sub">${item.sub}</span>`;
+    chip.addEventListener('click', () => selectNote(item.id));
+    grid.appendChild(chip);
+  });
+}
+
+function selectNote(id) {
+  currentNoteId = id;
+  const data = dataset.find(d => d.id === id);
+  if (!data) return;
+
+  // チップのアクティブ状態更新
+  document.querySelectorAll('.note-chip').forEach(c => {
+    c.classList.toggle('active', c.textContent.includes(data.name));
+  });
+
+  // 相違点テキスト更新
+  document.getElementById('diffDesc').textContent = data.diff;
+
+  // 各種キイのリセット
+  document.querySelectorAll('.key-node').forEach(k => k.classList.remove('active'));
+
+  // YDS-150 更新
+  data.yds.keys.forEach(kId => {
+    const el = document.getElementById(kId);
+    if (el) el.classList.add('active');
+  });
+  document.getElementById('yds-sum-title').textContent = `YDS-150: ${data.name}`;
+  document.getElementById('yds-sum-desc').textContent = data.yds.sum;
+
+  // AE-30 更新
+  data.ae.keys.forEach(kId => {
+    const el = document.getElementById(kId);
+    if (el) el.classList.add('active');
+  });
+  document.getElementById('ae-sum-title').textContent = `AE-30: ${data.name}`;
+  document.getElementById('ae-sum-desc').textContent = data.ae.sum;
+
+  // EWI Solo 更新
+  data.ewi.keys.forEach(kId => {
+    const el = document.getElementById(kId);
+    if (el) el.classList.add('active');
+  });
+  document.getElementById('ewi-sum-title').textContent = `EWI Solo: ${data.name}`;
+  document.getElementById('ewi-sum-desc').textContent = data.ewi.sum;
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+
+  dataset.forEach(row => {
+    const tr = document.createElement('tr');
+    const isDiff = row.diff.includes('決定的な違い') || row.diff.includes('非搭載') || row.diff.includes('YDS-150のみ');
+    tr.innerHTML = `
+      <td style="font-weight:bold; cursor:pointer;" onclick="selectNote('${row.id}')">${row.name}</td>
+      <td><span class="tag-match">${row.sub}</span></td>
+      <td>${row.yds.sum}</td>
+      <td>${row.ae.sum}</td>
+      <td>${row.ewi.sum}</td>
+      <td class="${isDiff ? 'tag-diff' : ''}">${row.diff}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+window.onload = init;
+</script>
+</body>
+</html>
