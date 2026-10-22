@@ -1,0 +1,2073 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MIDI to Aerophone Fingering & Key Helper</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans JP', 'sans-serif'],
+            mono: ['Fira Code', 'monospace']
+          },
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              400: '#4ade80',
+              500: '#22c55e',
+              600: '#16a34a',
+              glow: '#10b981'
+            },
+            aeroblue: {
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7'
+            },
+            dark: {
+              800: '#1e222a',
+              850: '#171a21',
+              900: '#0f1115',
+              950: '#090a0d'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f1115; }
+    ::-webkit-scrollbar-thumb { background: #272c36; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #38404e; }
+    
+    .key-glow {
+      background: radial-gradient(circle, #34d399 0%, #059669 100%) !important;
+      color: #022c22 !important;
+      border-color: #a7f3d0 !important;
+      box-shadow: 0 0 16px rgba(52, 211, 153, 0.9), inset 0 1px 2px rgba(255, 255, 255, 0.6) !important;
+      transform: scale(0.97);
+    }
+    .piano-roll-grid {
+      background-size: 40px 18px;
+      background-image: linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    }
+    /* Aerophone Body Bevel & Gradient */
+    .ae-body-gradient {
+      background: linear-gradient(135deg, #242933 0%, #171a22 35%, #0f1117 70%, #1e232e 100%);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8),
+                  inset 1px 1px 2px rgba(255, 255, 255, 0.12),
+                  inset -2px -2px 4px rgba(0, 0, 0, 0.7);
+    }
+    .ae-silver-rail {
+      background: linear-gradient(180deg, #64748b 0%, #334155 50%, #1e293b 100%);
+      box-shadow: inset 1px 0 1px rgba(255, 255, 255, 0.3);
+    }
+    .ae-screen-glow {
+      box-shadow: inset 0 0 8px rgba(56, 189, 248, 0.3), 0 0 10px rgba(56, 189, 248, 0.15);
+    }
+    .active-transpose-ring {
+      border-color: #22c55e !important;
+      background: rgba(34, 197, 94, 0.12) !important;
+      box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.35);
+    }
+  </style>
+</head>
+<body class="bg-dark-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-brand-500 selection:text-black">
+
+  <!-- Header -->
+  <header class="border-b border-dark-800 bg-dark-900/90 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-aeroblue-500 flex items-center justify-center shadow-lg shadow-brand-500/20 text-black font-black text-xl">
+          <i class="ph-bold ph-wind"></i>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            MIDI to Aerophone <span class="text-xs px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20 font-medium">Helper</span>
+          </h1>
+          <p class="text-xs text-slate-400">MIDI解析・推奨キートランスポーズ & サックス/ウィンドシンセ運指ナビ</p>
+        </div>
+      </div>
+      
+      <!-- Quick Demo Selector -->
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-slate-400 hidden sm:inline">デモ曲:</span>
+        <button onclick="loadPresetSong('autumn')" class="text-xs bg-dark-800 hover:bg-dark-850 hover:text-brand-400 border border-dark-800 px-2.5 py-1.5 rounded-lg transition">Jazz Standard</button>
+        <button onclick="loadPresetSong('pop')" class="text-xs bg-dark-800 hover:bg-dark-850 hover:text-brand-400 border border-dark-800 px-2.5 py-1.5 rounded-lg transition">J-Pop Ballad</button>
+        <button onclick="loadPresetSong('bach')" class="text-xs bg-dark-800 hover:bg-dark-850 hover:text-brand-400 border border-dark-800 px-2.5 py-1.5 rounded-lg transition">Bach Minuet</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    
+    <!-- Top Row: Upload & Track Selector & Analysis Summary -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Upload / Track Selector Panel (5 cols) -->
+      <div class="lg:col-span-5 bg-dark-900 border border-dark-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+        <div>
+          <!-- File Drop Zone -->
+          <div id="dropZone" class="border-2 border-dashed border-dark-800 hover:border-brand-500/60 bg-dark-950/60 rounded-xl p-6 text-center cursor-pointer transition group">
+            <input type="file" id="fileInput" accept=".mid,.midi" class="hidden">
+            <div class="w-12 h-12 mx-auto rounded-full bg-dark-850 flex items-center justify-center text-slate-400 group-hover:text-brand-400 group-hover:scale-110 transition">
+              <i class="ph-bold ph-file-arrow-up text-2xl"></i>
+            </div>
+            <p class="mt-3 text-sm font-semibold text-slate-200">MIDIファイルをドラッグ＆ドロップ</p>
+            <p class="text-xs text-slate-400 mt-1">またはクリックしてファイル選択 (.mid / .midi)</p>
+          </div>
+
+          <!-- Track Selection -->
+          <div class="mt-4">
+            <label class="block text-xs font-medium text-slate-400 mb-1.5">解析トラック (パート) の選択</label>
+            <select id="trackSelect" class="w-full bg-dark-950 border border-dark-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-brand-500 disabled:opacity-50" disabled>
+              <option value="">MIDIを読み込んでください</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Info Snippet -->
+        <div class="mt-4 pt-4 border-t border-dark-800/80 flex items-center justify-between text-xs text-slate-400">
+          <div class="flex items-center gap-1.5">
+            <i class="ph-bold ph-piano-keys text-brand-400"></i>
+            <span id="noteCountLabel">0 ノート</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <i class="ph-bold ph-clock text-aeroblue-400"></i>
+            <span id="durationLabel">0:00</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <i class="ph-bold ph-metronome text-amber-400"></i>
+            <span id="bpmLabel">120 BPM</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recommendation & Key Setting (7 cols) -->
+      <div class="lg:col-span-7 bg-dark-900 border border-dark-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between pb-3 border-b border-dark-800">
+            <h2 class="text-sm font-bold text-white flex items-center gap-2">
+              <i class="ph-bold ph-sparkle text-brand-400 text-lg"></i>
+              Aerophone 推奨キー & トランスポーズ設定
+            </h2>
+            <span id="recomBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-brand-500/20 text-brand-400 font-semibold border border-brand-500/30">
+              解析待ち
+            </span>
+          </div>
+
+          <!-- Recommender cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+            <!-- Optimal Preset Card -->
+            <div class="bg-dark-950/80 p-3.5 rounded-xl border border-dark-800 hover:border-brand-500/40 transition">
+              <div class="text-[11px] text-slate-400">最適トランスポーズ</div>
+              <div class="text-xl font-black text-brand-400 mt-1 flex items-baseline gap-1" id="optimalTransposeText">
+                --
+              </div>
+              <div class="text-[10px] text-slate-400 mt-1" id="optimalTransposeReason">
+                運指音域の適合度
+              </div>
+            </div>
+
+            <!-- Pitch Range -->
+            <div class="bg-dark-950/80 p-3.5 rounded-xl border border-dark-800">
+              <div class="text-[11px] text-slate-400">実音音域 (Concert Pitch)</div>
+              <div class="text-base font-bold text-slate-200 mt-1" id="rangeConcertText">
+                --
+              </div>
+              <div class="text-[10px] text-slate-400 mt-1" id="rangeSemitonesText">
+                全域: - 半音
+              </div>
+            </div>
+
+            <!-- Transposed Range -->
+            <div class="bg-dark-950/80 p-3.5 rounded-xl border border-dark-800">
+              <div class="text-[11px] text-slate-400">楽器運指の音域 (Fingering)</div>
+              <div class="text-base font-bold text-aeroblue-400 mt-1" id="rangeFingerText">
+                --
+              </div>
+              <div class="text-[10px] text-slate-400 mt-1" id="standardRangeFitText">
+                サックス基準域 (B♭3〜F#6)
+              </div>
+            </div>
+          </div>
+
+          <!-- Aerophone Master Key Selector Buttons -->
+          <div class="mt-4">
+            <label class="block text-xs font-medium text-slate-400 mb-1.5 flex items-center justify-between">
+              <span>Aerophone 本体のキートランスポーズ (または設定トランスポーズ)</span>
+              <span class="text-slate-400 font-normal">現在のシフト: <span id="currentShiftText" class="text-white font-mono font-bold">±0 (Key of C)</span></span>
+            </label>
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <button onclick="setInstrumentPreset('C', 0)" class="key-preset-btn px-3 py-2 text-xs rounded-xl border border-dark-800 bg-dark-950 hover:bg-dark-800 text-slate-300 font-medium transition active:scale-95" data-preset="C">
+                Key C (実音)
+              </button>
+              <button onclick="setInstrumentPreset('Bb', 2)" class="key-preset-btn px-3 py-2 text-xs rounded-xl border border-dark-800 bg-dark-950 hover:bg-dark-800 text-slate-300 font-medium transition active:scale-95" data-preset="Bb">
+                B♭ (テナー/ソプラノ)
+              </button>
+              <button onclick="setInstrumentPreset('Eb', -3)" class="key-preset-btn px-3 py-2 text-xs rounded-xl border border-dark-800 bg-dark-950 hover:bg-dark-800 text-slate-300 font-medium transition active:scale-95" data-preset="Eb">
+                E♭ (アルト/バリトン)
+              </button>
+              <button onclick="setInstrumentPreset('F', 7)" class="key-preset-btn px-3 py-2 text-xs rounded-xl border border-dark-800 bg-dark-950 hover:bg-dark-800 text-slate-300 font-medium transition active:scale-95" data-preset="F">
+                F (ホルン調)
+              </button>
+              <button onclick="applyRecommendedKey()" id="applyRecomBtn" class="px-3 py-2 text-xs rounded-xl border border-brand-500/40 bg-brand-500/10 hover:bg-brand-500/20 text-brand-400 font-semibold transition flex items-center justify-center gap-1">
+                <i class="ph-bold ph-magic-wand"></i> 推奨を適用
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fine Transpose Stepper -->
+        <div class="mt-4 flex items-center justify-between text-xs pt-3 border-t border-dark-800/80">
+          <span class="text-slate-400">半音単位で微調整 (Transpose Shift):</span>
+          <div class="flex items-center gap-2">
+            <button onclick="adjustTranspose(-1)" class="w-7 h-7 rounded-lg bg-dark-800 hover:bg-dark-850 flex items-center justify-center font-bold text-slate-200 hover:text-white border border-dark-700/60 transition active:scale-90">-1</button>
+            <span id="stepperValue" class="font-mono font-bold text-sm w-10 text-center text-brand-400">0</span>
+            <button onclick="adjustTranspose(1)" class="w-7 h-7 rounded-lg bg-dark-800 hover:bg-dark-850 flex items-center justify-center font-bold text-slate-200 hover:text-white border border-dark-700/60 transition active:scale-90">+1</button>
+            <button onclick="setTranspose(0)" class="text-[11px] text-slate-400 hover:text-slate-200 ml-1 underline">リセット</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center Section: Piano Roll View & Playback Controls -->
+    <div class="bg-dark-900 border border-dark-800 rounded-2xl p-5 shadow-xl space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <!-- Play / Pause / Scrubber info -->
+        <div class="flex items-center gap-3">
+          <button id="playBtn" onclick="togglePlayback()" class="w-11 h-11 rounded-xl bg-gradient-to-r from-brand-500 to-emerald-400 hover:opacity-95 text-black font-bold flex items-center justify-center shadow-lg shadow-brand-500/20 active:scale-95 transition">
+            <i id="playIcon" class="ph-fill ph-play text-xl"></i>
+          </button>
+          <button onclick="stopPlayback()" class="w-10 h-10 rounded-xl bg-dark-800 hover:bg-dark-850 border border-dark-800 text-slate-300 flex items-center justify-center transition active:scale-95" title="最初に戻る">
+            <i class="ph-bold ph-arrow-counter-clockwise text-lg"></i>
+          </button>
+          <div class="text-xs">
+            <div class="text-slate-400 font-mono" id="timeCounter">00:00.0 / 00:00.0</div>
+            <div class="text-[11px] text-slate-400">再生位置 / 全長</div>
+          </div>
+        </div>
+
+        <!-- Note info in current playhead -->
+        <div class="flex items-center gap-4 bg-dark-950 border border-dark-800 px-4 py-2 rounded-xl">
+          <div class="w-20 text-center">
+            <span class="text-[10px] text-slate-400 block uppercase tracking-wider">実音 (Concert)</span>
+            <span id="curConcertNote" class="text-lg font-black font-mono tabular-nums text-slate-200 block truncate">--</span>
+          </div>
+          <div class="w-px h-8 bg-dark-800 flex-shrink-0"></div>
+          <div class="w-24 text-center">
+            <span class="text-[10px] text-brand-400 block uppercase tracking-wider font-semibold">運指音 (Aerophone)</span>
+            <span id="curFingeringNote" class="text-xl font-black font-mono tabular-nums text-brand-400 block truncate">--</span>
+          </div>
+          <div class="w-px h-8 bg-dark-800 flex-shrink-0 hidden sm:block"></div>
+          <div class="w-44 text-center hidden sm:block">
+            <span class="text-[10px] text-slate-400 block uppercase tracking-wider">MIDI 番号</span>
+            <span id="curMidiNote" class="text-xs font-mono tabular-nums text-slate-400 block truncate leading-6">--</span>
+          </div>
+        </div>
+
+        <!-- Playback speed & synth sound options -->
+        <div class="flex items-center gap-3 text-xs">
+          <label class="text-slate-400 flex items-center gap-1">
+            <span>音色:</span>
+            <select id="synthToneSelect" class="bg-dark-950 border border-dark-800 rounded-lg px-2 py-1 text-slate-200 focus:outline-none">
+              <option value="wind">Wind Lead (Aerophone)</option>
+              <option value="sax">Reed / Sax</option>
+              <option value="flute">Pure Flute</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <!-- Practice Speed / Tempo Control Bar -->
+      <div class="flex flex-wrap items-center justify-between gap-3 bg-dark-950/70 border border-dark-800 px-4 py-2.5 rounded-xl">
+        <div class="flex items-center gap-2">
+          <i class="ph-bold ph-gauge text-brand-400 text-base"></i>
+          <span class="text-xs font-semibold text-slate-300">練習テンポ:</span>
+          <span id="currentBpmBadge" class="font-mono text-sm font-bold text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded border border-brand-500/20">120 BPM</span>
+          <span id="speedRateLabel" class="text-[11px] text-slate-400 font-mono">(100%)</span>
+        </div>
+
+        <!-- Quick Percentage Preset Buttons -->
+        <div class="flex items-center gap-1.5">
+          <button onclick="setSpeedRate(0.5)" class="speed-preset-btn px-2.5 py-1 text-xs rounded-lg border border-dark-800 bg-dark-900 hover:bg-dark-800 text-slate-300 font-mono transition active:scale-95" data-rate="0.5">50%</button>
+          <button onclick="setSpeedRate(0.75)" class="speed-preset-btn px-2.5 py-1 text-xs rounded-lg border border-dark-800 bg-dark-900 hover:bg-dark-800 text-slate-300 font-mono transition active:scale-95" data-rate="0.75">75%</button>
+          <button onclick="setSpeedRate(0.9)" class="speed-preset-btn px-2.5 py-1 text-xs rounded-lg border border-dark-800 bg-dark-900 hover:bg-dark-800 text-slate-300 font-mono transition active:scale-95" data-rate="0.9">90%</button>
+          <button onclick="setSpeedRate(1.0)" class="speed-preset-btn active-speed px-2.5 py-1 text-xs rounded-lg border border-brand-500 bg-brand-500/10 text-brand-400 font-mono font-semibold transition active:scale-95" data-rate="1.0">100%</button>
+          <button onclick="setSpeedRate(1.25)" class="speed-preset-btn px-2.5 py-1 text-xs rounded-lg border border-dark-800 bg-dark-900 hover:bg-dark-800 text-slate-300 font-mono transition active:scale-95" data-rate="1.25">125%</button>
+        </div>
+
+        <!-- Fine BPM Stepper & Slider -->
+        <div class="flex items-center gap-2">
+          <button onclick="adjustBpm(-5)" class="w-6 h-6 rounded bg-dark-900 hover:bg-dark-800 border border-dark-700 text-slate-300 text-xs font-bold transition active:scale-90">-5</button>
+          <input type="range" id="bpmSlider" min="40" max="240" value="120" step="1" class="w-24 h-1.5 bg-dark-800 rounded appearance-none cursor-pointer accent-brand-500">
+          <button onclick="adjustBpm(5)" class="w-6 h-6 rounded bg-dark-900 hover:bg-dark-800 border border-dark-700 text-slate-300 text-xs font-bold transition active:scale-90">+5</button>
+          <button onclick="resetBpm()" class="text-[10px] text-slate-400 hover:text-slate-200 underline ml-1">元に戻す</button>
+        </div>
+      </div>
+
+      <!-- Scrubber Slider -->
+      <div class="relative w-full">
+        <input type="range" id="timelineScrubber" min="0" max="100" value="0" step="0.01" class="w-full h-2 bg-dark-800 rounded-lg appearance-none cursor-pointer accent-brand-500 focus:outline-none">
+      </div>
+
+      <!-- Piano Roll Canvas -->
+      <div class="relative w-full h-44 bg-dark-950 rounded-xl border border-dark-800 overflow-hidden piano-roll-grid">
+        <canvas id="pianoRollCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+        <div id="playheadBar" class="absolute top-0 bottom-0 w-1 bg-brand-400 pointer-events-none shadow-[0_0_12px_#22c55e] transition-[left] duration-75" style="left: 0%;">
+          <div class="w-2.5 h-2.5 bg-brand-400 rounded-full -ml-[3px] -mt-0.5 shadow-md shadow-brand-500"></div>
+        </div>
+      </div>
+      <div class="flex items-center justify-between text-[11px] text-slate-400">
+        <span>※ タイムラインをクリックまたはドラッグすると任意の位置へシークできます</span>
+        <span class="flex items-center gap-3">
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-brand-500 inline-block"></span> 基準音域内</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-rose-500 inline-block"></span> 基準音域外 (オクターブ等要調整)</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Bottom Section: Aerophone Fingering Diagram & Key Chart -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Aerophone Interactive Diagram (8 cols) -->
+      <div class="lg:col-span-8 bg-dark-900 border border-dark-800 rounded-2xl p-6 shadow-xl">
+        <div class="flex items-center justify-between pb-4 border-b border-dark-800 mb-6">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="ph-bold ph-hand-pointing text-brand-400 text-lg"></i>
+              Aerophone 運指チャート (Roland AE-20 / AE-30 Layout)
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">流線型グラファイトボディ & サックス運指キーシステム (緑 = 押下キー)</p>
+          </div>
+          <div class="text-right">
+            <span id="noteFingerNameDisplay" class="text-2xl font-black font-mono text-brand-400">--</span>
+            <span id="octaveShiftDisplay" class="text-xs block text-slate-400">Oct: 0</span>
+          </div>
+        </div>
+
+        <!-- Visual Body of Aerophone (Redesigned Roland AE Style) -->
+        <div class="flex flex-col md:flex-row items-center justify-center gap-8 py-4">
+          
+          <!-- Aerophone Body Column -->
+          <div class="relative w-64 ae-body-gradient rounded-[54px] p-5 border-2 border-slate-700/60 shadow-2xl flex flex-col items-center">
+            
+            <!-- Metallic Accent Rails -->
+            <div class="absolute left-2.5 top-16 bottom-16 w-1 rounded-full ae-silver-rail opacity-80 pointer-events-none"></div>
+            <div class="absolute right-2.5 top-16 bottom-16 w-1 rounded-full ae-silver-rail opacity-80 pointer-events-none"></div>
+
+            <!-- Top Mouthpiece & Reed Assembly -->
+            <div class="flex flex-col items-center -mt-8 mb-2 z-10">
+              <div class="w-6 h-10 bg-gradient-to-b from-dark-950 via-slate-900 to-dark-900 rounded-t-xl border-t border-x border-slate-600 shadow-lg flex items-center justify-center">
+                <!-- Reed Line -->
+                <div class="w-1.5 h-6 bg-amber-200/40 rounded-full shadow-inner"></div>
+              </div>
+              <div class="w-10 h-2 bg-gradient-to-r from-slate-700 via-slate-500 to-slate-700 rounded-sm shadow-md"></div>
+              <div class="text-[8px] font-mono text-slate-400 mt-1 uppercase tracking-widest font-bold">Aerophone</div>
+            </div>
+
+            <!-- Mini OLED Display simulation -->
+            <div class="w-24 bg-dark-950 rounded-lg p-1.5 border border-aeroblue-500/40 ae-screen-glow text-center mb-3">
+              <div class="text-[8px] text-aeroblue-400 font-mono tracking-wider font-semibold">AE-30 OLED</div>
+              <div class="text-[11px] font-mono font-bold text-white leading-tight" id="aeOledDisplay">C4 : ±0</div>
+            </div>
+
+            <!-- Octave / Thumb Keys Section (Upper Back Simulation) -->
+            <div class="w-full bg-dark-950/80 rounded-2xl p-2.5 mb-3 border border-dark-800 shadow-inner text-center">
+              <div class="text-[9px] text-slate-400 uppercase tracking-widest font-mono mb-1.5 flex items-center justify-center gap-1">
+                <i class="ph-bold ph-arrow-fat-lines-up text-brand-400"></i> Thumb Octave Keys
+              </div>
+              <div class="flex justify-center items-center gap-1.5">
+                <div id="key-oct-down2" class="key-indicator w-8 h-6 rounded-md border border-slate-700 bg-dark-850 text-[9px] font-bold text-slate-400 flex items-center justify-center transition-all">-2</div>
+                <div id="key-oct-down1" class="key-indicator w-9 h-7 rounded-md border border-slate-700 bg-dark-850 text-[10px] font-bold text-slate-300 flex items-center justify-center transition-all">-1</div>
+                <!-- Octave 0 / Standard Thumb Rest position -->
+                <div id="key-oct-zero" class="key-indicator w-14 h-7 rounded-md border-2 border-brand-500/40 bg-dark-900 text-[10px] font-bold text-brand-400 flex items-center justify-center transition-all shadow-inner" title="標準ポジション (親指オクターブキー非押下)">Oct 0</div>
+                <div id="key-oct-up1" class="key-indicator w-10 h-7 rounded-md border border-slate-700 bg-dark-850 text-[10px] font-bold text-slate-300 flex items-center justify-center transition-all">+1 (Oct)</div>
+                <div id="key-oct-up2" class="key-indicator w-8 h-6 rounded-md border border-slate-700 bg-dark-850 text-[9px] font-bold text-slate-400 flex items-center justify-center transition-all">+2</div>
+              </div>
+            </div>
+
+            <!-- Main Keys Container -->
+            <div class="w-full relative px-2">
+              
+              <!-- Left Hand Palm / High Keys (High D, Eb, F) positioned on the upper right/side -->
+              <div class="absolute -right-7 top-1 flex flex-col gap-1.5">
+                <div id="key-palm-d" class="key-indicator w-7 h-6 rounded-lg border border-slate-700 bg-dark-850 text-[9px] font-bold text-slate-300 flex items-center justify-center shadow" title="High D Palm (D1)">D1</div>
+                <div id="key-palm-eb" class="key-indicator w-7 h-6 rounded-lg border border-slate-700 bg-dark-850 text-[9px] font-bold text-slate-300 flex items-center justify-center shadow" title="High Eb Palm (D2)">D2</div>
+                <div id="key-palm-f" class="key-indicator w-7 h-6 rounded-lg border border-slate-700 bg-dark-850 text-[9px] font-bold text-slate-300 flex items-center justify-center shadow" title="High F Palm (D3)">D3</div>
+              </div>
+
+              <!-- Left Hand Side Bb / C keys on left edge -->
+              <div class="absolute -left-7 top-24 flex flex-col gap-1.5">
+                <div id="key-side-c" class="key-indicator w-7 h-6 rounded-md border border-slate-700 bg-dark-850 text-[9px] font-bold text-slate-300 flex items-center justify-center shadow" title="Side C">sC</div>
+                <div id="key-side-bb" class="key-indicator w-7 h-6 rounded-md border border-slate-700 bg-dark-850 text-[9px] font-bold text-slate-300 flex items-center justify-center shadow" title="Side Bb">sBb</div>
+                <div id="key-side-highfsharp" class="key-indicator w-7 h-6 rounded-md border border-slate-700 bg-dark-850 text-[9px] font-bold text-slate-300 flex items-center justify-center shadow" title="High F#">F#</div>
+              </div>
+
+              <!-- LEFT HAND SECTION (Keys 1, 2, 3) -->
+              <div class="text-[9px] text-slate-400 font-mono uppercase tracking-wider mb-1 flex items-center justify-between">
+                <span>Left Hand (LH)</span>
+                <span class="text-[8px] text-slate-400">Pearl Keys</span>
+              </div>
+              <div class="space-y-2 mb-3">
+                <div class="flex items-center gap-2">
+                  <div id="key-lh-bis" class="key-indicator w-6 h-6 rounded-full border border-slate-700 bg-dark-850 text-[8px] font-bold text-slate-300 flex items-center justify-center shadow" title="Bis key">Bis</div>
+                  <div id="key-lh-1" class="key-indicator flex-1 h-9 rounded-2xl border-2 border-slate-700 bg-gradient-to-b from-dark-800 to-dark-850 text-xs font-black text-slate-200 flex items-center justify-center shadow-lg">1 (B)</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-6"></div>
+                  <div id="key-lh-2" class="key-indicator flex-1 h-9 rounded-2xl border-2 border-slate-700 bg-gradient-to-b from-dark-800 to-dark-850 text-xs font-black text-slate-200 flex items-center justify-center shadow-lg">2 (A)</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-6"></div>
+                  <div id="key-lh-3" class="key-indicator flex-1 h-9 rounded-2xl border-2 border-slate-700 bg-gradient-to-b from-dark-800 to-dark-850 text-xs font-black text-slate-200 flex items-center justify-center shadow-lg">3 (G)</div>
+                </div>
+              </div>
+
+              <!-- Left Hand Pinky Cluster (G#, Low C#, Low B, Low Bb) -->
+              <div class="grid grid-cols-2 gap-1.5 p-2 bg-dark-950/80 rounded-2xl border border-dark-800 mb-3 shadow-inner">
+                <div id="key-lh-gsharp" class="key-indicator h-6 rounded-lg border border-slate-700 bg-dark-850 text-[9px] font-bold text-slate-300 flex items-center justify-center">G#</div>
+                <div id="key-lh-lowcsharp" class="key-indicator h-6 rounded-lg border border-slate-700 bg-dark-850 text-[9px] font-bold text-slate-300 flex items-center justify-center">Low C#</div>
+                <div id="key-lh-lowb" class="key-indicator h-6 rounded-lg border border-slate-700 bg-dark-850 text-[9px] font-bold text-slate-300 flex items-center justify-center">Low B</div>
+                <div id="key-lh-lowbb" class="key-indicator h-6 rounded-lg border border-slate-700 bg-dark-850 text-[9px] font-bold text-slate-300 flex items-center justify-center">Low B♭</div>
+              </div>
+
+              <!-- RIGHT HAND SECTION (Keys 4, 5, 6) -->
+              <div class="text-[9px] text-slate-400 font-mono uppercase tracking-wider mb-1 flex items-center justify-between">
+                <span>Right Hand (RH)</span>
+                <span class="text-[8px] text-slate-400">Pearl Keys</span>
+              </div>
+              <div class="space-y-2 mb-3">
+                <div id="key-rh-4" class="key-indicator w-full h-9 rounded-2xl border-2 border-slate-700 bg-gradient-to-b from-dark-800 to-dark-850 text-xs font-black text-slate-200 flex items-center justify-center shadow-lg">4 (F)</div>
+                <div id="key-rh-5" class="key-indicator w-full h-9 rounded-2xl border-2 border-slate-700 bg-gradient-to-b from-dark-800 to-dark-850 text-xs font-black text-slate-200 flex items-center justify-center shadow-lg">5 (E)</div>
+                <div id="key-rh-6" class="key-indicator w-full h-9 rounded-2xl border-2 border-slate-700 bg-gradient-to-b from-dark-800 to-dark-850 text-xs font-black text-slate-200 flex items-center justify-center shadow-lg">6 (D)</div>
+              </div>
+
+              <!-- Right Hand Pinky (Low Eb, Low C) -->
+              <div class="flex gap-2 p-2 bg-dark-950/80 rounded-2xl border border-dark-800 shadow-inner">
+                <div id="key-rh-loweb" class="key-indicator flex-1 h-6 rounded-lg border border-slate-700 bg-dark-850 text-[9px] font-bold text-slate-300 flex items-center justify-center">Low E♭</div>
+                <div id="key-rh-lowc" class="key-indicator flex-1 h-6 rounded-lg border border-slate-700 bg-dark-850 text-[9px] font-bold text-slate-300 flex items-center justify-center">Low C</div>
+              </div>
+
+            </div>
+
+            <!-- Thumb Lever / Bottom Speaker Grille -->
+            <div class="w-full flex items-center justify-between px-6 mt-4">
+              <div class="w-6 h-6 rounded-full bg-dark-950 border border-slate-700 flex items-center justify-center" title="Thumb Lever / Controller">
+                <div class="w-2.5 h-2.5 rounded-full bg-slate-600 shadow"></div>
+              </div>
+              <!-- Speaker Slits -->
+              <div class="flex gap-1">
+                <div class="w-1 h-4 bg-slate-700 rounded-full"></div>
+                <div class="w-1 h-4 bg-slate-700 rounded-full"></div>
+                <div class="w-1 h-4 bg-slate-700 rounded-full"></div>
+                <div class="w-1 h-4 bg-slate-700 rounded-full"></div>
+              </div>
+              <div class="w-5 h-2 bg-slate-800 rounded-sm"></div>
+            </div>
+
+            <!-- Bell End Trim -->
+            <div class="w-20 h-3.5 bg-gradient-to-r from-slate-800 via-slate-600 to-slate-800 rounded-b-2xl border-b border-x border-slate-500 mt-2 shadow-xl"></div>
+          </div>
+
+          <!-- Explanation / Note Details Panel -->
+          <div class="flex-1 max-w-sm space-y-4">
+            <div class="bg-dark-950/90 rounded-2xl p-4 border border-dark-800">
+              <h3 class="text-xs font-bold text-slate-300 flex items-center gap-1.5 mb-2">
+                <i class="ph-bold ph-info text-aeroblue-400"></i>
+                運指の解説・特徴
+              </h3>
+              <p id="fingeringExplanation" class="text-xs text-slate-400 leading-relaxed">
+                MIDIを再生またはピアノロールのノートをクリックすると、左手・右手・オクターブキー・サイドキーの押下位置がリアルタイム表示されます。
+              </p>
+            </div>
+
+            <!-- Aerophone Key Guide Box -->
+            <div class="bg-dark-950/90 rounded-2xl p-4 border border-dark-800 space-y-3">
+              <div class="text-xs font-bold text-slate-300">エアロフォン運指のポイント</div>
+              <ul class="text-[11px] text-slate-400 space-y-2 list-disc list-inside">
+                <li><strong class="text-slate-200">標準オクターブ:</strong> 親指のオクターブキーを押さない状態が中音域 (B♭3〜C#5)。</li>
+                <li><strong class="text-slate-200">+1 Oct:</strong> D5以上は左手親指のオクターブキー(+1)を押します。</li>
+                <li><strong class="text-slate-200">フラット/シャープ:</strong> サイドキー(sBb/sC)またはBisキーを使用可能。</li>
+                <li><strong class="text-slate-200">最低音:</strong> Low B♭ (全閉 + 左小指LowBbキー)。</li>
+              </ul>
+            </div>
+
+            <!-- Manual Pitch Test Keyboard (One-octave test strip) -->
+            <div class="bg-dark-950/90 rounded-2xl p-4 border border-dark-800">
+              <div class="text-[11px] font-bold text-slate-400 mb-2">運指テスト (手動タップ)</div>
+              <div class="flex justify-between gap-1 overflow-x-auto pb-1" id="quickTestKeys">
+                <!-- Dynamically filled with test buttons C4 to B4 -->
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Key Transposition Evaluation Table (4 cols) -->
+      <div class="lg:col-span-4 bg-dark-900 border border-dark-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between pb-3 border-b border-dark-800">
+            <h2 class="text-sm font-bold text-white flex items-center gap-1.5">
+              <i class="ph-bold ph-chart-bar text-brand-400"></i>
+              各調トランスポーズ適合評価
+            </h2>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">
+            サックス運指域（B♭3〜F#6）への収まり具合と、演奏しやすい調号（#・♭の少なさ）をスコアリング。行をクリックするとキーが即座に切り替わります。
+          </p>
+
+          <div class="mt-4 space-y-2.5" id="keyRankingList">
+            <!-- Dynamically populated key evaluation rows -->
+            <div class="text-center py-8 text-xs text-slate-400">
+              MIDIパートを選択すると調性評価がここに表示されます。
+            </div>
+          </div>
+        </div>
+
+        <!-- Help tip card -->
+        <div class="mt-6 p-3.5 rounded-xl bg-dark-950/60 border border-dark-800 text-[11px] text-slate-400 flex items-start gap-2.5">
+          <i class="ph-fill ph-lightbulb text-amber-400 text-lg flex-shrink-0 mt-0.5"></i>
+          <div>
+            <strong class="text-slate-300">Aerophoneの強み:</strong> 
+            トランスポーズ（Master Tuning/Key）を本体側で変えれば、どの曲でも得意なCやF、Gのシンプルな運指で演奏可能です。
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Audio Context Notification Modal/Prompt for Autoplay policy -->
+  <div id="audioUnlockBanner" class="fixed bottom-4 left-1/2 -translate-x-1/2 bg-dark-850/95 border border-brand-500/40 text-slate-200 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 z-50 text-xs hidden backdrop-blur">
+    <i class="ph-bold ph-speaker-high text-brand-400 text-lg"></i>
+    <span>ブラウザの音声再生を有効化するためにクリックしてください</span>
+    <button onclick="unlockAudio()" class="px-3 py-1 bg-brand-500 text-black font-bold rounded-lg hover:bg-brand-400">有効化</button>
+  </div>
+
+  <!-- SCRIPT SECTION -->
+  <script>
+    /* ====================================================================
+       1. GLOBAL STATE & CONSTANTS
+       ==================================================================== */
+    const NOTE_NAMES_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const NOTE_NAMES_FLAT  = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'G♭', 'G', 'A♭', 'A', 'B♭', 'B'];
+
+    // Standard Saxophone Range in MIDI numbers:
+    // Low Bb3 = 58, Low B3 = 59, Middle C4 = 60, High F6 = 89, High F#6 = 90
+    const SAX_MIN_MIDI = 58; // Low Bb3
+    const SAX_MAX_MIDI = 90; // High F#6
+
+    let audioCtx = null;
+    let activeOscillators = [];
+    let isPlaying = false;
+    let playbackStartTime = 0;
+    let playbackOffset = 0; // seconds
+    let playbackAnimFrame = null;
+    let currentMidiEvents = []; // parsed note events
+    let currentBpm = 120;
+    let baseMidiBpm = 120; // Original MIDI BPM
+    let playbackRate = 1.0; // Speed ratio (0.5 to 2.0)
+    let songDuration = 0; // seconds
+    let transposeShift = 0; // semitones applied to fingering view
+    let parsedTracks = [];
+    let selectedTrackIndex = 0;
+    let recommendedShift = 0;
+
+    /* ====================================================================
+       2. AEROPHONE / SAXOPHONE FINGERING DEFINITIONS & DATABASE
+       Key representations:
+       LH: 1, 2, 3, bis, side_c, side_bb, high_fsharp, gsharp, lowcsharp, lowb, lowbb, palm_d, palm_eb, palm_f
+       RH: 4, 5, 6, loweb, lowc
+       Octave: oct_down2, oct_down1, oct_none, oct_up1, oct_up2
+       ==================================================================== */
+    function midiToNoteName(midiNum, useFlat = false) {
+      if (midiNum < 0 || midiNum > 127) return '--';
+      const octave = Math.floor(midiNum / 12) - 1;
+      const noteIdx = midiNum % 12;
+      const name = useFlat ? NOTE_NAMES_FLAT[noteIdx] : NOTE_NAMES_SHARP[noteIdx];
+      return `${name}${octave}`;
+    }
+
+    // Returns standard fingering map for a given transposed MIDI pitch (Aerophone Sax fingering mode)
+    function getFingeringForMidi(midiNum) {
+      // Keys template
+      const keys = {
+        lh1: false, lh2: false, lh3: false, bis: false,
+        rh4: false, rh5: false, rh6: false,
+        lhGsharp: false, lhLowCsharp: false, lhLowB: false, lhLowBb: false,
+        rhLowEb: false, rhLowC: false,
+        sideC: false, sideBb: false, sideHighFsharp: false,
+        palmD: false, palmEb: false, palmF: false,
+        octUp2: false, octUp1: false, octDown1: false, octDown2: false,
+        octaveText: '0',
+        noteLabel: midiToNoteName(midiNum),
+        desc: ''
+      };
+
+      if (!midiNum || midiNum < 34 || midiNum > 106) {
+        keys.desc = '音域外';
+        return keys;
+      }
+
+      // ---------------------------------------------------------------
+      // Aerophone Octave Transposition Logic
+      // Standard Saxophone Acoustic Range: Bb3 (58) to F#6 (90)
+      // Extended ranges use Aerophone thumb octave keys (-2, -1, +1, +2)
+      // ---------------------------------------------------------------
+      let effectivePitch = midiNum;
+      if (midiNum < 46) {
+        // Extreme Low Register (-2 Octaves thumb)
+        keys.octDown2 = true;
+        effectivePitch = midiNum + 24;
+      } else if (midiNum < 58) {
+        // Low Extended Register (-1 Octave thumb)
+        keys.octDown1 = true;
+        effectivePitch = midiNum + 12;
+      } else if (midiNum > 90) {
+        // Extended Altissimo (+2 Octaves thumb)
+        keys.octUp2 = true;
+        effectivePitch = midiNum - 24;
+      }
+
+      // Check whether Octave (+1) key is engaged:
+      // In standard saxophone fingering:
+      // - Fundamentals: Low Bb3 (58) to C#5 (73) -> NO octave key (Oct 0)
+      // - Second Register: D5 (74) to C#6 (85) -> WITH octave key (Oct +1)
+      // - High Palm Keys: D6 (86) to F#6 (90) -> WITH octave key (Oct +1)
+      if (effectivePitch >= 74 && effectivePitch <= 90) {
+        keys.octUp1 = true;
+      }
+
+      // ---------------------------------------------------------------
+      // Fundamental / Second Register Fingering Assignment
+      // ---------------------------------------------------------------
+      const pc = effectivePitch % 12; // 0: C, 1: C#, 2: D, ... 11: B
+
+      // 1. Extreme Low Bell Notes (Bb3, B3, C4, C#4) - only when octUp1 is NOT active
+      if (!keys.octUp1 && effectivePitch <= 61) {
+        if (effectivePitch === 58) { // Low Bb3
+          keys.lh1 = keys.lh2 = keys.lh3 = true;
+          keys.rh4 = keys.rh5 = keys.rh6 = true;
+          keys.rhLowC = true;
+          keys.lhLowBb = true;
+          keys.desc = 'Low B♭3 (全閉 + 左小指B♭ + 右小指C)';
+          return keys;
+        }
+        if (effectivePitch === 59) { // Low B3
+          keys.lh1 = keys.lh2 = keys.lh3 = true;
+          keys.rh4 = keys.rh5 = keys.rh6 = true;
+          keys.rhLowC = true;
+          keys.lhLowB = true;
+          keys.desc = 'Low B3 (全閉 + 左小指B + 右小指C)';
+          return keys;
+        }
+        if (effectivePitch === 60) { // Low C4
+          keys.lh1 = keys.lh2 = keys.lh3 = true;
+          keys.rh4 = keys.rh5 = keys.rh6 = true;
+          keys.rhLowC = true;
+          keys.desc = 'Low C4 (全閉 + 右小指C)';
+          return keys;
+        }
+        if (effectivePitch === 61) { // Low C#4
+          keys.lh1 = keys.lh2 = keys.lh3 = true;
+          keys.rh4 = keys.rh5 = keys.rh6 = true;
+          keys.rhLowC = true;
+          keys.lhLowCsharp = true;
+          keys.desc = 'Low C#4 (全閉 + 左小指C# + 右小指C)';
+          return keys;
+        }
+      }
+
+      // 2. High Palm Keys Register (D6 to F#6)
+      if (effectivePitch >= 86) {
+        keys.octUp1 = true;
+        if (effectivePitch === 86) { // High D6
+          keys.palmD = true;
+          keys.desc = 'High D6 (オクターブ + パームD1)';
+        } else if (effectivePitch === 87) { // High Eb6 / D#6
+          keys.palmD = true;
+          keys.palmEb = true;
+          keys.desc = 'High E♭6 (オクターブ + パームD1, D2)';
+        } else if (effectivePitch === 88) { // High E6
+          keys.palmD = true;
+          keys.palmEb = true;
+          keys.lh1 = true;
+          keys.desc = 'High E6 (オクターブ + パームD1, D2 + 1)';
+        } else if (effectivePitch === 89) { // High F6
+          keys.palmD = true;
+          keys.palmEb = true;
+          keys.palmF = true;
+          keys.desc = 'High F6 (オクターブ + パームD1, D2, D3)';
+        } else if (effectivePitch >= 90) { // High F#6
+          keys.palmD = true;
+          keys.palmEb = true;
+          keys.palmF = true;
+          keys.sideHighFsharp = true;
+          keys.desc = 'High F#6 (オクターブ + パーム + サイドF#)';
+        }
+        return keys;
+      }
+
+      // 3. Main Body Scale (D4〜C#5 for Oct 0, D5〜C#6 for Oct +1)
+      const octPrefix = keys.octUp1 ? 'オクターブ(+1) + ' : '';
+
+      switch (pc) {
+        case 2: // D
+          keys.lh1 = keys.lh2 = keys.lh3 = true;
+          keys.rh4 = keys.rh5 = keys.rh6 = true;
+          keys.desc = `${octPrefix}D (1-2-3-4-5-6)`;
+          break;
+        case 3: // Eb / D#
+          keys.lh1 = keys.lh2 = keys.lh3 = true;
+          keys.rh4 = keys.rh5 = keys.rh6 = true;
+          keys.rhLowEb = true;
+          keys.desc = `${octPrefix}E♭ / D# (1-2-3-4-5-6 + 右小指E♭)`;
+          break;
+        case 4: // E
+          keys.lh1 = keys.lh2 = keys.lh3 = true;
+          keys.rh4 = keys.rh5 = true;
+          keys.desc = `${octPrefix}E (1-2-3-4-5)`;
+          break;
+        case 5: // F
+          keys.lh1 = keys.lh2 = keys.lh3 = true;
+          keys.rh4 = true;
+          keys.desc = `${octPrefix}F (1-2-3-4)`;
+          break;
+        case 6: // F# / Gb
+          keys.lh1 = keys.lh2 = keys.lh3 = true;
+          keys.rh5 = true; // Chromatic middle F#
+          keys.desc = `${octPrefix}F# / G♭ (1-2-3 + 右中指5)`;
+          break;
+        case 7: // G
+          keys.lh1 = keys.lh2 = keys.lh3 = true;
+          keys.desc = `${octPrefix}G (1-2-3)`;
+          break;
+        case 8: // G# / Ab
+          keys.lh1 = keys.lh2 = keys.lh3 = true;
+          keys.lhGsharp = true;
+          keys.desc = `${octPrefix}G# / A♭ (1-2-3 + 左小指G#)`;
+          break;
+        case 9: // A
+          keys.lh1 = keys.lh2 = true;
+          keys.desc = `${octPrefix}A (1-2)`;
+          break;
+        case 10: // Bb / A#
+          keys.lh1 = true;
+          keys.sideBb = true;
+          keys.desc = `${octPrefix}B♭ / A# (1 + サイドB♭)`;
+          break;
+        case 11: // B
+          keys.lh1 = true;
+          keys.desc = `${octPrefix}B (1 のみ)`;
+          break;
+        case 0: // C
+          keys.lh2 = true;
+          keys.desc = `${octPrefix}C (2 のみ)`;
+          break;
+        case 1: // C#
+          // Open C#
+          keys.desc = `${octPrefix}C# (開放 / 主キー全離し)`;
+          break;
+      }
+
+      return keys;
+    }
+
+    function applyFingeringToUI(fingeredMidi) {
+      const finger = getFingeringForMidi(fingeredMidi);
+      
+      document.getElementById('noteFingerNameDisplay').textContent = finger.noteLabel;
+      
+      let octLabel = 'Oct: 0 (基準)';
+      if (finger.octUp2) octLabel = 'Oct: +2 (超高音)';
+      else if (finger.octUp1) octLabel = 'Oct: +1 (オクターブキー)';
+      else if (finger.octDown2) octLabel = 'Oct: -2 (超低音)';
+      else if (finger.octDown1) octLabel = 'Oct: -1 (低音キー)';
+      document.getElementById('octaveShiftDisplay').textContent = octLabel;
+
+      document.getElementById('fingeringExplanation').textContent = finger.desc || '標準運指';
+
+      // Update OLED on Aerophone body
+      const oledNote = document.getElementById('aeOledDisplay');
+      if (oledNote) oledNote.textContent = finger.noteLabel;
+
+      // Helper to activate UI key
+      const setKey = (id, active) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (active) {
+          el.classList.add('key-glow');
+        } else {
+          el.classList.remove('key-glow');
+        }
+      };
+
+      // LH Primary Pearl Keys
+      setKey('key-lh-1', finger.lh1);
+      setKey('key-lh-2', finger.lh2);
+      setKey('key-lh-3', finger.lh3);
+      setKey('key-lh-bis', finger.bis);
+
+      // LH Side & Palm Spatula Keys
+      setKey('key-side-c', finger.sideC);
+      setKey('key-side-bb', finger.sideBb);
+      setKey('key-side-highfsharp', finger.sideHighFsharp);
+      setKey('key-palm-d', finger.palmD);
+      setKey('key-palm-eb', finger.palmEb);
+      setKey('key-palm-f', finger.palmF);
+
+      // LH Pinky Table Keys
+      setKey('key-lh-gsharp', finger.lhGsharp);
+      setKey('key-lh-lowcsharp', finger.lhLowCsharp);
+      setKey('key-lh-lowb', finger.lhLowB);
+      setKey('key-lh-lowbb', finger.lhLowBb);
+
+      // RH Primary Pearl Keys
+      setKey('key-rh-4', finger.rh4);
+      setKey('key-rh-5', finger.rh5);
+      setKey('key-rh-6', finger.rh6);
+
+      // RH Pinky Spatula Keys
+      setKey('key-rh-loweb', finger.rhLowEb);
+      setKey('key-rh-lowc', finger.rhLowC);
+
+      // Thumb Octave keys
+      setKey('key-oct-up1', finger.octUp1);
+      setKey('key-oct-up2', finger.octUp2);
+      setKey('key-oct-down1', finger.octDown1);
+      setKey('key-oct-down2', finger.octDown2);
+      
+      // Oct 0 (Neutral thumb rest position - active when NO octave shift key is pressed)
+      const isOctZero = !finger.octUp1 && !finger.octUp2 && !finger.octDown1 && !finger.octDown2;
+      setKey('key-oct-zero', isOctZero);
+    }
+
+    /* ====================================================================
+       3. WEB AUDIO SYNTH ENGINE
+       ==================================================================== */
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContextClass();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      const banner = document.getElementById('audioUnlockBanner');
+      if (banner) banner.classList.add('hidden');
+    }
+
+    function unlockAudio() {
+      initAudio();
+    }
+
+    function midiToFreq(midiNum) {
+      return 440 * Math.pow(2, (midiNum - 69) / 12);
+    }
+
+    function playTone(freq, durationSec = 0.25, toneType = 'wind') {
+      if (!audioCtx) initAudio();
+      if (!audioCtx) return;
+
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+
+      if (toneType === 'sax') {
+        osc.type = 'sawtooth';
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(freq * 3.5, now);
+        filter.Q.setValueAtTime(2, now);
+      } else if (toneType === 'flute') {
+        osc.type = 'sine';
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(freq * 2.2, now);
+      } else {
+        // Wind Lead
+        osc.type = 'triangle';
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(freq * 4.0, now);
+      }
+
+      osc.frequency.setValueAtTime(freq, now);
+
+      // ADSR envelope
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.18, now + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + Math.max(0.05, durationSec));
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start(now);
+      osc.stop(now + durationSec + 0.05);
+
+      activeOscillators.push(osc);
+      setTimeout(() => {
+        const idx = activeOscillators.indexOf(osc);
+        if (idx !== -1) activeOscillators.splice(idx, 1);
+      }, (durationSec + 0.1) * 1000);
+    }
+
+    function stopAllAudio() {
+      activeOscillators.forEach(osc => {
+        try { osc.stop(); } catch (e) {}
+      });
+      activeOscillators = [];
+    }
+
+    /* ====================================================================
+       4. STANDARD MIDI PARSER (Format 0 & 1)
+       ==================================================================== */
+    const MidiParser = {
+      parse(arrayBuffer) {
+        const data = new DataView(arrayBuffer);
+        let offset = 0;
+
+        function readString(len) {
+          let str = '';
+          for (let i = 0; i < len; i++) {
+            str += String.fromCharCode(data.getUint8(offset++));
+          }
+          return str;
+        }
+
+        const headerId = readString(4);
+        if (headerId !== 'MThd') {
+          throw new Error('Not a valid MIDI file: Missing MThd');
+        }
+
+        const headerLength = data.getUint32(offset);
+        offset += 4;
+        const format = data.getUint16(offset);
+        offset += 2;
+        const trackCount = data.getUint16(offset);
+        offset += 2;
+        const timeDivision = data.getUint16(offset);
+        offset += 2;
+
+        if (headerLength > 6) {
+          offset += (headerLength - 6);
+        }
+
+        const tracks = [];
+        let globalTempoBpm = 120;
+
+        for (let t = 0; t < trackCount; t++) {
+          if (offset >= data.byteLength) break;
+          const trackId = readString(4);
+          const trackLength = data.getUint32(offset);
+          offset += 4;
+          const trackEnd = offset + trackLength;
+
+          let trackName = `Track ${t + 1}`;
+          let runningStatus = 0;
+          let currentTick = 0;
+          const notesOn = {};
+          const noteEvents = [];
+          let detectedChannel = 0;
+
+          function readVarInt() {
+            let value = 0;
+            let byte = 0;
+            do {
+              byte = data.getUint8(offset++);
+              value = (value << 7) | (byte & 0x7F);
+            } while (byte & 0x80);
+            return value;
+          }
+
+          while (offset < trackEnd) {
+            const delta = readVarInt();
+            currentTick += delta;
+
+            let statusByte = data.getUint8(offset);
+            if (statusByte & 0x80) {
+              runningStatus = statusByte;
+              offset++;
+            } else {
+              statusByte = runningStatus;
+            }
+
+            const eventType = statusByte >> 4;
+            const channel = statusByte & 0x0F;
+            detectedChannel = channel;
+
+            if (statusByte === 0xFF) {
+              // Meta Event
+              const metaType = data.getUint8(offset++);
+              const metaLen = readVarInt();
+              if (metaType === 0x03) {
+                // Track name
+                let nameStr = '';
+                for (let k = 0; k < metaLen; k++) {
+                  nameStr += String.fromCharCode(data.getUint8(offset + k));
+                }
+                trackName = nameStr.trim() || trackName;
+              } else if (metaType === 0x51 && metaLen === 3) {
+                // Tempo
+                const usPerQuarter = (data.getUint8(offset) << 16) | (data.getUint8(offset + 1) << 8) | data.getUint8(offset + 2);
+                globalTempoBpm = Math.round(60000000 / usPerQuarter);
+              }
+              offset += metaLen;
+            } else if (statusByte === 0xF0 || statusByte === 0xF7) {
+              // SysEx
+              const sysexLen = readVarInt();
+              offset += sysexLen;
+            } else if (eventType === 0x9) {
+              // Note On
+              const pitch = data.getUint8(offset++);
+              const velocity = data.getUint8(offset++);
+              if (velocity > 0) {
+                if (!notesOn[pitch]) notesOn[pitch] = [];
+                notesOn[pitch].push({ tick: currentTick, velocity });
+              } else {
+                // Velocity 0 = Note Off
+                if (notesOn[pitch] && notesOn[pitch].length > 0) {
+                  const on = notesOn[pitch].shift();
+                  noteEvents.push({
+                    pitch,
+                    startTick: on.tick,
+                    endTick: currentTick,
+                    velocity: on.velocity,
+                    channel
+                  });
+                }
+              }
+            } else if (eventType === 0x8) {
+              // Note Off
+              const pitch = data.getUint8(offset++);
+              offset++; // velocity ignored
+              if (notesOn[pitch] && notesOn[pitch].length > 0) {
+                const on = notesOn[pitch].shift();
+                noteEvents.push({
+                  pitch,
+                  startTick: on.tick,
+                  endTick: currentTick,
+                  velocity: on.velocity,
+                  channel
+                });
+              }
+            } else if (eventType === 0xA || eventType === 0xB || eventType === 0xE) {
+              offset += 2;
+            } else if (eventType === 0xC || eventType === 0xD) {
+              offset += 1;
+            }
+          }
+
+          offset = trackEnd;
+
+          // Convert ticks to seconds using current tempo
+          const secondsPerTick = (60 / globalTempoBpm) / (timeDivision || 480);
+          const convertedNotes = noteEvents
+            .map(n => ({
+              pitch: n.pitch,
+              startTime: n.startTick * secondsPerTick,
+              endTime: n.endTick * secondsPerTick,
+              duration: Math.max(0.08, (n.endTick - n.startTick) * secondsPerTick),
+              velocity: n.velocity,
+              channel: n.channel
+            }))
+            .sort((a, b) => a.startTime - b.startTime);
+
+          tracks.push({
+            trackIndex: t,
+            name: trackName,
+            channel: detectedChannel,
+            notes: convertedNotes
+          });
+        }
+
+        return {
+          bpm: globalTempoBpm,
+          timeDivision,
+          tracks
+        };
+      }
+    };
+
+    /* ====================================================================
+       5. KEY SIGNATURE & TRANSPOSE ANALYSIS ENGINE
+       ==================================================================== */
+    // Helper to evaluate pitch ease on saxophone / aerophone fingering
+    // Natural diatonic notes in C major: C(0), D(2), E(4), F(5), G(7), A(9), B(11)
+    // Awkward or pinky-heavy accidentals:
+    // - C#(1): Open key in middle, or heavy pinky table in low register
+    // - Eb(3): RH pinky
+    // - F#(6): Middle finger RH5 or side key
+    // - G#(8): LH pinky
+    // - Bb(10): Bis key or Side Bb
+    const PITCH_DIFFICULTY_WEIGHTS = {
+      0: 0.1,  // C (LH2) - Very easy
+      2: 0.1,  // D (1-2-3-4-5-6) - Easy
+      4: 0.1,  // E (1-2-3-4-5) - Easy
+      5: 0.2,  // F (1-2-3-4) - Easy
+      7: 0.1,  // G (1-2-3) - Very easy
+      9: 0.1,  // A (1-2) - Very easy
+      11: 0.1, // B (1) - Very easy
+      10: 0.8, // Bb/A# (Bis or Side Bb) - Moderate
+      6: 1.2,  // F#/Gb (RH5 chromatic) - Moderate
+      3: 1.6,  // Eb/D# (RH pinky key) - Somewhat awkward
+      8: 2.2,  // G#/Ab (LH pinky table) - Clumsy pinky
+      1: 2.5   // C#/Db (LH pinky table or full-open register transition) - Clumsy
+    };
+
+    // Key signatures in circle of fifths (Fingering Key / Written Key)
+    // Positive = sharps, Negative = flats
+    const KEY_NAME_ACCIDENTALS = {
+      0: { name: 'C Major / A minor', sharps: 0, flats: 0, tag: '調号なし (運指: 最も自然)' },
+      7: { name: 'G Major / E minor', sharps: 1, flats: 0, tag: '♯1個 (運指: 易)' },
+      2: { name: 'D Major / B minor', sharps: 2, flats: 0, tag: '♯2個 (運指: 易〜中)' },
+      9: { name: 'A Major / F# minor', sharps: 3, flats: 0, tag: '♯3個 (運指: 中)' },
+      4: { name: 'E Major / C# minor', sharps: 4, flats: 0, tag: '♯4個 (運指: やや難)' },
+      11: { name: 'B Major / G# minor', sharps: 5, flats: 0, tag: '♯5個 (運指: 難)' },
+      6: { name: 'F# Major / D# minor', sharps: 6, flats: 0, tag: '♯6個 (運指: 最難)' },
+      5: { name: 'F Major / D minor', sharps: 0, flats: 1, tag: '♭1個 (運指: 易)' },
+      10: { name: 'B♭ Major / G minor', sharps: 0, flats: 2, tag: '♭2個 (運指: 易〜中)' },
+      3: { name: 'E♭ Major / C minor', sharps: 0, flats: 3, tag: '♭3個 (運指: 中)' },
+      8: { name: 'A♭ Major / F minor', sharps: 0, flats: 4, tag: '♭4個 (運指: やや難)' },
+      1: { name: 'D♭ Major / B♭ minor', sharps: 0, flats: 5, tag: '♭5個 (運指: 難)' }
+    };
+
+    function estimateScaleTonic(pitchClasses) {
+      // Find the most frequent pitch classes to determine approximate root/tonic
+      const counts = Array(12).fill(0);
+      pitchClasses.forEach(pc => counts[pc]++);
+      
+      // Best fit matching major / minor profile
+      let bestTonic = 0;
+      let maxScore = -9999;
+
+      for (let root = 0; root < 12; root++) {
+        // Major scale scale degrees: 0, 2, 4, 5, 7, 9, 11
+        const majorWeight = counts[root] * 2.0 
+                          + counts[(root + 2) % 12] * 1.0 
+                          + counts[(root + 4) % 12] * 1.5 
+                          + counts[(root + 5) % 12] * 1.0 
+                          + counts[(root + 7) % 12] * 1.8 
+                          + counts[(root + 9) % 12] * 1.0 
+                          + counts[(root + 11) % 12] * 1.2;
+        // Minor scale scale degrees: 0, 2, 3, 5, 7, 8, 10
+        const minorWeight = counts[root] * 2.0 
+                          + counts[(root + 2) % 12] * 1.0 
+                          + counts[(root + 3) % 12] * 1.5 
+                          + counts[(root + 5) % 12] * 1.0 
+                          + counts[(root + 7) % 12] * 1.8 
+                          + counts[(root + 8) % 12] * 1.0 
+                          + counts[(root + 10) % 12] * 1.2;
+        const total = Math.max(majorWeight, minorWeight);
+        if (total > maxScore) {
+          maxScore = total;
+          bestTonic = root;
+        }
+      }
+      return bestTonic;
+    }
+
+    function analyzePart(notes) {
+      if (!notes || notes.length === 0) return null;
+
+      const pitches = notes.map(n => n.pitch);
+      const minPitch = Math.min(...pitches);
+      const maxPitch = Math.max(...pitches);
+
+      const evaluations = [];
+
+      // Test all 12 semitone shifts from -5 to +6
+      for (let shift = -5; shift <= 6; shift++) {
+        const transposedPitches = pitches.map(p => p + shift);
+        const tMin = minPitch + shift;
+        const tMax = maxPitch + shift;
+
+        let inRangeCount = 0;
+        let outOfRangePenalty = 0;
+        let fingeringComplexityPenalty = 0;
+
+        const transposedPitchClasses = [];
+
+        transposedPitches.forEach(p => {
+          const pc = ((p % 12) + 12) % 12;
+          transposedPitchClasses.push(pc);
+
+          // Range check
+          if (p >= SAX_MIN_MIDI && p <= SAX_MAX_MIDI) {
+            inRangeCount++;
+          } else {
+            const dist = p < SAX_MIN_MIDI ? (SAX_MIN_MIDI - p) : (p - SAX_MAX_MIDI);
+            outOfRangePenalty += Math.min(15, dist * 3.0);
+          }
+
+          // Ergonomic fingering penalty for clumsy pinky and palm keys
+          fingeringComplexityPenalty += (PITCH_DIFFICULTY_WEIGHTS[pc] || 0.5);
+
+          // Additional penalty if extreme registers require complex palm keys (D6+) or low pinky keys
+          if (p >= 86) fingeringComplexityPenalty += 1.5; // High Palm keys (D1/D2/D3)
+          if (p <= 61) fingeringComplexityPenalty += 1.2; // Low C#, Low B, Low Bb pinky table
+        });
+
+        const fitPercentage = Math.round((inRangeCount / pitches.length) * 100);
+        const avgComplexity = fingeringComplexityPenalty / pitches.length;
+
+        // Estimate written key signature for this transposition
+        const estimatedTonic = estimateScaleTonic(transposedPitchClasses);
+        const keyInfo = KEY_NAME_ACCIDENTALS[estimatedTonic] || { name: 'Custom Key', sharps: 0, flats: 0, tag: '' };
+        const totalAccidentals = keyInfo.sharps + keyInfo.flats;
+
+        // Key signature penalty: more sharps/flats = harder to finger on sax/aerophone
+        // Keys with 0 to 2 accidentals (C, G, D, F, Bb) are favored heavily
+        let keySignaturePenalty = totalAccidentals * 14.0;
+        if (totalAccidentals <= 1) {
+          keySignaturePenalty -= 15; // Strong bonus for C, G, F
+        } else if (totalAccidentals <= 2) {
+          keySignaturePenalty -= 6;  // Mild bonus for D, Bb
+        } else if (totalAccidentals >= 4) {
+          keySignaturePenalty += 20; // Heavy penalty for B, F#, Db, Ab
+        }
+
+        // Instrument preset familiarity bonus:
+        // C (0), Bb (+2), Eb (-3 / +9) are the most standard transpositions players know
+        let standardPresetBonus = 0;
+        if (shift === 0) standardPresetBonus += 12;      // Concert C (natural)
+        if (shift === 2) standardPresetBonus += 10;      // Tenor / Soprano (Bb)
+        if (shift === -3 || shift === 9) standardPresetBonus += 10; // Alto / Bari (Eb)
+        if (shift === 7 || shift === -5) standardPresetBonus += 6;  // F
+
+        // Holistic ease score:
+        // High range fit is required (>75%), but among candidates in range, 
+        // the one with FEWER accidentals and simpler fingerings dominates!
+        const rangeScore = fitPercentage * 2.2 - (outOfRangePenalty * 2.0);
+        const easeScore = 100 - (avgComplexity * 25.0) - keySignaturePenalty + standardPresetBonus;
+        
+        const finalScore = rangeScore + easeScore;
+
+        evaluations.push({
+          shift,
+          fitPercentage,
+          outOfRangeNotes: pitches.length - inRangeCount,
+          transposedMin: tMin,
+          transposedMax: tMax,
+          keyName: keyInfo.name,
+          keyTag: keyInfo.tag,
+          totalAccidentals,
+          avgComplexity,
+          score: finalScore
+        });
+      }
+
+      // Sort by best score (easiest to play with good range fit)
+      evaluations.sort((a, b) => b.score - a.score);
+
+      return {
+        minPitch,
+        maxPitch,
+        recommendedShift: evaluations[0].shift,
+        recommendedFit: evaluations[0].fitPercentage,
+        recommendedKeyName: evaluations[0].keyName,
+        recommendedKeyTag: evaluations[0].keyTag,
+        evaluations
+      };
+    }
+
+    /* ====================================================================
+       6. PIANO ROLL VISUALIZER & PLAYHEAD
+       ==================================================================== */
+    const pianoCanvas = document.getElementById('pianoRollCanvas');
+    const pianoCtx = pianoCanvas.getContext('2d');
+
+    function resizeCanvas() {
+      if (!pianoCanvas) return;
+      pianoCanvas.width = pianoCanvas.clientWidth * window.devicePixelRatio;
+      pianoCanvas.height = pianoCanvas.clientHeight * window.devicePixelRatio;
+      pianoCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      drawPianoRoll();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    function drawPianoRoll() {
+      if (!pianoCanvas || !pianoCtx) return;
+      const w = pianoCanvas.clientWidth;
+      const h = pianoCanvas.clientHeight;
+      pianoCtx.clearRect(0, 0, w, h);
+
+      if (!currentMidiEvents || currentMidiEvents.length === 0 || songDuration <= 0) {
+        pianoCtx.fillStyle = '#64748b';
+        pianoCtx.font = '12px Inter, sans-serif';
+        pianoCtx.textAlign = 'center';
+        pianoCtx.fillText('MIDIパートを選択するとピアノロールが表示されます', w / 2, h / 2);
+        return;
+      }
+
+      const minPitch = Math.min(48, Math.min(...currentMidiEvents.map(n => n.pitch)) - 2);
+      const maxPitch = Math.max(84, Math.max(...currentMidiEvents.map(n => n.pitch)) + 2);
+      const pitchRange = Math.max(1, maxPitch - minPitch);
+
+      // Draw horizontal pitch guide lines
+      for (let p = minPitch; p <= maxPitch; p++) {
+        const y = h - ((p - minPitch) / pitchRange) * h;
+        const isC = p % 12 === 0;
+        pianoCtx.strokeStyle = isC ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.03)';
+        pianoCtx.lineWidth = isC ? 1.5 : 0.8;
+        pianoCtx.beginPath();
+        pianoCtx.moveTo(0, y);
+        pianoCtx.lineTo(w, y);
+        pianoCtx.stroke();
+      }
+
+      // Draw notes
+      currentMidiEvents.forEach(note => {
+        const x = (note.startTime / songDuration) * w;
+        const noteWidth = Math.max(3, (note.duration / songDuration) * w);
+        const y = h - ((note.pitch - minPitch) / pitchRange) * h - 4;
+        const noteHeight = Math.max(3, (h / pitchRange) * 0.85);
+
+        const transposedPitch = note.pitch + transposeShift;
+        const inSaxRange = transposedPitch >= SAX_MIN_MIDI && transposedPitch <= SAX_MAX_MIDI;
+
+        // Current active playback note highlight
+        const isActive = (playbackOffset >= note.startTime && playbackOffset <= note.endTime);
+
+        if (isActive) {
+          pianoCtx.fillStyle = '#facc15';
+          pianoCtx.shadowColor = '#eab308';
+          pianoCtx.shadowBlur = 10;
+        } else if (inSaxRange) {
+          pianoCtx.fillStyle = '#22c55e';
+          pianoCtx.shadowBlur = 0;
+        } else {
+          pianoCtx.fillStyle = '#f43f5e';
+          pianoCtx.shadowBlur = 0;
+        }
+
+        pianoCtx.beginPath();
+        pianoCtx.roundRect(x, y, noteWidth, noteHeight, 2);
+        pianoCtx.fill();
+        pianoCtx.shadowBlur = 0;
+      });
+    }
+
+    function updatePlayheadPosition() {
+      if (songDuration <= 0) return;
+      const progress = Math.min(1, Math.max(0, playbackOffset / songDuration));
+      const playheadBar = document.getElementById('playheadBar');
+      if (playheadBar) {
+        playheadBar.style.left = `${progress * 100}%`;
+      }
+
+      const scrubber = document.getElementById('timelineScrubber');
+      if (scrubber && !isUserScrubbing) {
+        scrubber.value = progress * 100;
+      }
+
+      // Time counter display
+      const curM = Math.floor(playbackOffset / 60);
+      const curS = (playbackOffset % 60).toFixed(1);
+      const totM = Math.floor(songDuration / 60);
+      const totS = Math.floor(songDuration % 60);
+      const counter = document.getElementById('timeCounter');
+      if (counter) {
+        counter.textContent = `${String(curM).padStart(2, '0')}:${String(curS).padStart(4, '0')} / ${String(totM).padStart(2, '0')}:${String(totS).padStart(2, '0')}`;
+      }
+    }
+
+    function updateCurrentNoteDisplay(timeSec) {
+      if (!currentMidiEvents || currentMidiEvents.length === 0) return;
+
+      const activeNote = currentMidiEvents.find(n => timeSec >= n.startTime && timeSec <= n.endTime);
+      const concertLabel = document.getElementById('curConcertNote');
+      const fingerLabel = document.getElementById('curFingeringNote');
+      const midiLabel = document.getElementById('curMidiNote');
+      const oledSub = document.getElementById('aeOledConcertSub');
+
+      if (activeNote) {
+        const concertName = midiToNoteName(activeNote.pitch);
+        // Fingering pitch is transformed by the transposeShift (aerophone instrument setting)
+        const transposedPitch = activeNote.pitch + transposeShift;
+        const fingerName = midiToNoteName(transposedPitch);
+
+        if (concertLabel) concertLabel.textContent = concertName;
+        if (fingerLabel) fingerLabel.textContent = fingerName;
+        if (midiLabel) midiLabel.textContent = `運指#${transposedPitch} (実音#${activeNote.pitch})`;
+        if (oledSub) oledSub.textContent = `実音: ${concertName}`;
+
+        applyFingeringToUI(transposedPitch);
+      } else {
+        if (concertLabel) concertLabel.textContent = '--';
+        if (fingerLabel) fingerLabel.textContent = '--';
+        if (midiLabel) midiLabel.textContent = '--';
+        if (oledSub) oledSub.textContent = '実音: --';
+      }
+    }
+
+    /* ====================================================================
+       7. PLAYBACK & TEMPO CONTROLS
+       ==================================================================== */
+    let lastPlayedNoteIndex = -1;
+
+    function togglePlayback() {
+      if (isPlaying) {
+        pausePlayback();
+      } else {
+        startPlayback();
+      }
+    }
+
+    function startPlayback() {
+      if (!currentMidiEvents || currentMidiEvents.length === 0) return;
+      initAudio();
+
+      if (playbackOffset >= songDuration) {
+        playbackOffset = 0;
+      }
+
+      isPlaying = true;
+      lastPlayedNoteIndex = -1;
+      playbackStartTime = performance.now() - (playbackOffset / playbackRate) * 1000;
+
+      const playIcon = document.getElementById('playIcon');
+      if (playIcon) {
+        playIcon.className = 'ph-fill ph-pause text-xl';
+      }
+
+      cancelAnimationFrame(playbackAnimFrame);
+      playbackAnimFrame = requestAnimationFrame(playbackLoop);
+    }
+
+    function pausePlayback() {
+      isPlaying = false;
+      stopAllAudio();
+      const playIcon = document.getElementById('playIcon');
+      if (playIcon) {
+        playIcon.className = 'ph-fill ph-play text-xl';
+      }
+      cancelAnimationFrame(playbackAnimFrame);
+    }
+
+    function stopPlayback() {
+      pausePlayback();
+      playbackOffset = 0;
+      lastPlayedNoteIndex = -1;
+      updatePlayheadPosition();
+      updateCurrentNoteDisplay(0);
+      drawPianoRoll();
+    }
+
+    function playbackLoop() {
+      if (!isPlaying) return;
+
+      const elapsedMs = performance.now() - playbackStartTime;
+      playbackOffset = (elapsedMs / 1000) * playbackRate;
+
+      if (playbackOffset >= songDuration) {
+        stopPlayback();
+        return;
+      }
+
+      // Check for note trigger in current audio frame
+      // CRITICAL: Synthesizer ALWAYS plays note.pitch (the actual Concert pitch of the music),
+      // while transposeShift only adjusts the Aerophone's finger positioning & chart.
+      currentMidiEvents.forEach((note, idx) => {
+        if (playbackOffset >= note.startTime && playbackOffset <= note.endTime) {
+          if (lastPlayedNoteIndex !== idx) {
+            lastPlayedNoteIndex = idx;
+            const concertMidi = note.pitch;
+            const tone = document.getElementById('synthToneSelect').value;
+            const scaledDuration = (note.duration / playbackRate);
+            playTone(midiToFreq(concertMidi), scaledDuration, tone);
+          }
+        }
+      });
+
+      updatePlayheadPosition();
+      updateCurrentNoteDisplay(playbackOffset);
+      drawPianoRoll();
+
+      playbackAnimFrame = requestAnimationFrame(playbackLoop);
+    }
+
+    function setSpeedRate(rate) {
+      playbackRate = rate;
+      currentBpm = Math.round(baseMidiBpm * playbackRate);
+      syncBpmUI();
+
+      if (isPlaying) {
+        // Resync playback start timestamp to avoid jump
+        playbackStartTime = performance.now() - (playbackOffset / playbackRate) * 1000;
+      }
+    }
+
+    function adjustBpm(delta) {
+      currentBpm = Math.max(40, Math.min(240, currentBpm + delta));
+      playbackRate = currentBpm / (baseMidiBpm || 120);
+      syncBpmUI();
+
+      if (isPlaying) {
+        playbackStartTime = performance.now() - (playbackOffset / playbackRate) * 1000;
+      }
+    }
+
+    function resetBpm() {
+      setSpeedRate(1.0);
+    }
+
+    function syncBpmUI() {
+      const badge = document.getElementById('currentBpmBadge');
+      if (badge) badge.textContent = `${currentBpm} BPM`;
+
+      const bpmLabel = document.getElementById('bpmLabel');
+      if (bpmLabel) bpmLabel.textContent = `${currentBpm} BPM`;
+
+      const speedLabel = document.getElementById('speedRateLabel');
+      if (speedLabel) speedLabel.textContent = `(${Math.round(playbackRate * 100)}%)`;
+
+      const slider = document.getElementById('bpmSlider');
+      if (slider) slider.value = currentBpm;
+
+      document.querySelectorAll('.speed-preset-btn').forEach(btn => {
+        const rate = parseFloat(btn.getAttribute('data-rate'));
+        if (Math.abs(rate - playbackRate) < 0.02) {
+          btn.classList.add('border-brand-500', 'bg-brand-500/10', 'text-brand-400', 'active-speed');
+          btn.classList.remove('bg-dark-900', 'border-dark-800', 'text-slate-300');
+        } else {
+          btn.classList.remove('border-brand-500', 'bg-brand-500/10', 'text-brand-400', 'active-speed');
+          btn.classList.add('bg-dark-900', 'border-dark-800', 'text-slate-300');
+        }
+      });
+    }
+
+    document.getElementById('bpmSlider').addEventListener('input', (e) => {
+      currentBpm = parseInt(e.target.value, 10);
+      playbackRate = currentBpm / (baseMidiBpm || 120);
+      syncBpmUI();
+      if (isPlaying) {
+        playbackStartTime = performance.now() - (playbackOffset / playbackRate) * 1000;
+      }
+    });
+
+    /* ====================================================================
+       8. TIMELINE SCRUBBING & CANVAS INTERACTION
+       ==================================================================== */
+    let isUserScrubbing = false;
+    const scrubber = document.getElementById('timelineScrubber');
+
+    scrubber.addEventListener('input', (e) => {
+      isUserScrubbing = true;
+      if (songDuration > 0) {
+        playbackOffset = (parseFloat(e.target.value) / 100) * songDuration;
+        if (isPlaying) {
+          playbackStartTime = performance.now() - (playbackOffset / playbackRate) * 1000;
+        }
+        updatePlayheadPosition();
+        updateCurrentNoteDisplay(playbackOffset);
+        drawPianoRoll();
+      }
+    });
+
+    scrubber.addEventListener('change', () => {
+      isUserScrubbing = false;
+    });
+
+    pianoCanvas.addEventListener('click', (e) => {
+      if (songDuration <= 0) return;
+      const rect = pianoCanvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+      playbackOffset = ratio * songDuration;
+      lastPlayedNoteIndex = -1;
+
+      if (isPlaying) {
+        playbackStartTime = performance.now() - (playbackOffset / playbackRate) * 1000;
+      }
+
+      updatePlayheadPosition();
+      updateCurrentNoteDisplay(playbackOffset);
+      drawPianoRoll();
+
+      // Audition note under click at actual concert pitch
+      const active = currentMidiEvents.find(n => playbackOffset >= n.startTime && playbackOffset <= n.endTime);
+      if (active) {
+        playTone(midiToFreq(active.pitch), 0.35, document.getElementById('synthToneSelect').value);
+      }
+    });
+
+    /* ====================================================================
+       9. TRANSPOSE CONTROLS & PRESETS
+       ==================================================================== */
+    function setTranspose(semitones) {
+      transposeShift = semitones;
+      document.getElementById('stepperValue').textContent = (semitones > 0 ? '+' : '') + semitones;
+      
+      const keyName = getPresetNameForShift(semitones);
+      document.getElementById('currentShiftText').textContent = `${semitones > 0 ? '+' : ''}${semitones} (${keyName})`;
+
+      // Update preset buttons styling
+      document.querySelectorAll('.key-preset-btn').forEach(btn => {
+        btn.classList.remove('border-brand-500', 'text-brand-400', 'bg-dark-900', 'active-transpose-ring');
+      });
+
+      // Highlight corresponding instrument preset button if matching
+      const matchingPreset = semitones === 0 ? 'C' : semitones === 2 ? 'Bb' : (semitones === -3 || semitones === 9) ? 'Eb' : semitones === 7 ? 'F' : null;
+      if (matchingPreset) {
+        const btn = document.querySelector(`[data-preset="${matchingPreset}"]`);
+        if (btn) btn.classList.add('border-brand-500', 'text-brand-400', 'active-transpose-ring');
+      }
+
+      // Refresh selection cursor in Key Ranking List
+      highlightActiveKeyRankingRow(semitones);
+
+      // Update simulated OLED screen key label
+      const oledKeyLabel = document.getElementById('aeOledKeyLabel');
+      if (oledKeyLabel) {
+        const shortKey = semitones === 0 ? 'C' : semitones === 2 ? 'Bb' : (semitones === -3 || semitones === 9) ? 'Eb' : semitones === 7 ? 'F' : `${semitones > 0 ? '+' : ''}${semitones}`;
+        oledKeyLabel.textContent = `KEY: ${shortKey} (${semitones >= 0 ? '+' : ''}${semitones})`;
+      }
+
+      // Redraw canvas with new range validity colors
+      drawPianoRoll();
+      updatePlayheadPosition();
+      updateCurrentNoteDisplay(playbackOffset);
+      updateRangeCards();
+    }
+
+    function adjustTranspose(delta) {
+      setTranspose(transposeShift + delta);
+    }
+
+    function setInstrumentPreset(name, shift) {
+      setTranspose(shift);
+    }
+
+    function getPresetNameForShift(shift) {
+      const map = {
+        0: 'Key of C (実音)',
+        2: 'Key of B♭ (テナー/ソプラノ)',
+        '-3': 'Key of E♭ (アルト/バリトン)',
+        9: 'Key of E♭ (アルト/バリトン)',
+        7: 'Key of F (ホルン)',
+        '-5': 'Key of G'
+      };
+      return map[shift] || `Shift ${shift > 0 ? '+' : ''}${shift}`;
+    }
+
+    function applyRecommendedKey() {
+      setTranspose(recommendedShift);
+    }
+
+    function highlightActiveKeyRankingRow(currentShift) {
+      document.querySelectorAll('.key-rank-row').forEach(row => {
+        const rowShift = parseInt(row.getAttribute('data-shift'), 10);
+        const checkIcon = row.querySelector('.rank-check-icon');
+        if (rowShift === currentShift) {
+          row.classList.add('active-transpose-ring', 'border-brand-500');
+          row.classList.remove('border-dark-800');
+          if (checkIcon) checkIcon.classList.remove('hidden');
+        } else {
+          row.classList.remove('active-transpose-ring', 'border-brand-500');
+          row.classList.add('border-dark-800');
+          if (checkIcon) checkIcon.classList.add('hidden');
+        }
+      });
+    }
+
+    function updateRangeCards() {
+      if (!currentMidiEvents.length) return;
+      const minP = Math.min(...currentMidiEvents.map(n => n.pitch));
+      const maxP = Math.max(...currentMidiEvents.map(n => n.pitch));
+
+      document.getElementById('rangeConcertText').textContent = `${midiToNoteName(minP)} 〜 ${midiToNoteName(maxP)}`;
+      document.getElementById('rangeSemitonesText').textContent = `全域: ${maxP - minP + 1} 半音 (${((maxP - minP) / 12).toFixed(1)} Oct)`;
+
+      const fingerMin = minP + transposeShift;
+      const fingerMax = maxP + transposeShift;
+      document.getElementById('rangeFingerText').textContent = `${midiToNoteName(fingerMin)} 〜 ${midiToNoteName(fingerMax)}`;
+
+      const fitGood = fingerMin >= SAX_MIN_MIDI && fingerMax <= SAX_MAX_MIDI;
+      const fitText = document.getElementById('standardRangeFitText');
+      if (fitGood) {
+        fitText.innerHTML = '<span class="text-brand-400 font-semibold">✓ 基準域内に完全適合</span>';
+      } else {
+        const lowDiff = SAX_MIN_MIDI - fingerMin;
+        const highDiff = fingerMax - SAX_MAX_MIDI;
+        let msg = '';
+        if (lowDiff > 0) msg += `下限オーバー -${lowDiff}半音 `;
+        if (highDiff > 0) msg += `上限オーバー +${highDiff}半音`;
+        fitText.innerHTML = `<span class="text-rose-400 font-medium">⚠️ ${msg}</span>`;
+      }
+    }
+
+    /* ====================================================================
+       10. TRACK SELECTION & ANALYSIS UI POPULATION
+       ==================================================================== */
+    function onTrackSelected(trackIndex) {
+      selectedTrackIndex = parseInt(trackIndex, 10);
+      const track = parsedTracks[selectedTrackIndex];
+      if (!track || !track.notes.length) return;
+
+      currentMidiEvents = track.notes;
+      songDuration = Math.max(...currentMidiEvents.map(n => n.endTime));
+      document.getElementById('noteCountLabel').textContent = `${currentMidiEvents.length} ノート`;
+      
+      const m = Math.floor(songDuration / 60);
+      const s = Math.floor(songDuration % 60);
+      document.getElementById('durationLabel').textContent = `${m}:${String(s).padStart(2, '0')}`;
+
+      // Run Key Analysis Engine with Ergonomic Fingering Weighting
+      const analysis = analyzePart(currentMidiEvents);
+      if (analysis) {
+        recommendedShift = analysis.recommendedShift;
+        const recomShiftText = (recommendedShift > 0 ? '+' : '') + recommendedShift;
+        const recomPresetName = getPresetNameForShift(recommendedShift);
+
+        document.getElementById('optimalTransposeText').innerHTML = `
+          <span>${recomShiftText}</span>
+          <span class="text-xs text-slate-300 font-normal">(${recomPresetName})</span>
+        `;
+        document.getElementById('optimalTransposeReason').innerHTML = `
+          <span class="text-brand-400 font-medium">運指調: ${analysis.recommendedKeyName}</span>
+          <span class="block text-[10px] text-slate-400 mt-0.5">${analysis.recommendedKeyTag} (適合率: ${analysis.recommendedFit}%)</span>
+        `;
+        document.getElementById('recomBadge').textContent = `推奨: ${recomPresetName}`;
+
+        // Populate Key Ranking List with key difficulty and accidental stats
+        populateKeyRankingTable(analysis.evaluations);
+
+        // Auto apply recommended shift
+        setTranspose(recommendedShift);
+      }
+
+      stopPlayback();
+      resizeCanvas();
+    }
+
+    function populateKeyRankingTable(evaluations) {
+      const container = document.getElementById('keyRankingList');
+      container.innerHTML = '';
+
+      // Take top 6 recommendations
+      evaluations.slice(0, 6).forEach((ev, rank) => {
+        const presetName = getPresetNameForShift(ev.shift);
+        const isBest = rank === 0;
+
+        // Badge color based on accidental count (fingering ease)
+        let easeBadgeColor = 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
+        let easeLabel = '運指◎ 非常に易しい';
+        if (ev.totalAccidentals === 0) {
+          easeLabel = '運指◎ ♯♭なし(白鍵中心)';
+        } else if (ev.totalAccidentals <= 1) {
+          easeLabel = `運指○ ${ev.keyTag.split(' ')[0]}`;
+        } else if (ev.totalAccidentals <= 2) {
+          easeBadgeColor = 'bg-aeroblue-500/15 text-aeroblue-400 border-aeroblue-500/30';
+          easeLabel = `運指普 ${ev.keyTag.split(' ')[0]}`;
+        } else if (ev.totalAccidentals <= 3) {
+          easeBadgeColor = 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+          easeLabel = `運指注意 ${ev.keyTag.split(' ')[0]}`;
+        } else {
+          easeBadgeColor = 'bg-rose-500/15 text-rose-400 border-rose-500/30';
+          easeLabel = `運指難 ${ev.keyTag.split(' ')[0]}`;
+        }
+
+        const row = document.createElement('div');
+        row.setAttribute('data-shift', ev.shift);
+        row.className = `key-rank-row p-3 rounded-xl border flex items-center justify-between cursor-pointer transition active:scale-[0.98] ${
+          isBest ? 'bg-brand-500/10' : 'bg-dark-950 hover:border-slate-700'
+        } border-dark-800`;
+        
+        row.onclick = () => {
+          setTranspose(ev.shift);
+          // Play current note tone to provide audio feedback at true concert pitch
+          const activeNote = currentMidiEvents.find(n => playbackOffset >= n.startTime && playbackOffset <= n.endTime) || currentMidiEvents[0];
+          if (activeNote) {
+            playTone(midiToFreq(activeNote.pitch), 0.25, document.getElementById('synthToneSelect').value);
+          }
+        };
+
+        row.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full ${isBest ? 'bg-brand-500 text-black font-black' : 'bg-dark-800 text-slate-400'} text-xs font-bold flex items-center justify-center shadow">
+              ${rank + 1}
+            </span>
+            <div>
+              <div class="text-xs font-bold text-slate-100 flex items-center gap-1.5">
+                <span>${presetName}</span>
+                <span class="rank-check-icon text-brand-400 text-xs hidden">
+                  <i class="ph-bold ph-check-circle"></i>
+                </span>
+              </div>
+              <div class="text-[11px] text-brand-400 font-medium mt-0.5">
+                ${ev.keyName}
+              </div>
+              <div class="text-[10px] text-slate-400">運指音域: ${midiToNoteName(ev.transposedMin)} 〜 ${midiToNoteName(ev.transposedMax)}</div>
+            </div>
+          </div>
+          <div class="text-right flex flex-col items-end gap-1">
+            <span class="text-[10px] px-2 py-0.5 rounded-full border ${easeBadgeColor} font-medium">
+              ${easeLabel}
+            </span>
+            <span class="text-xs font-mono font-bold ${ev.fitPercentage === 100 ? 'text-brand-400' : ev.fitPercentage > 85 ? 'text-emerald-400' : 'text-amber-400'}">
+              音域適合: ${ev.fitPercentage}%
+            </span>
+            <span class="text-[9px] text-slate-500">${ev.outOfRangeNotes === 0 ? '全音域OK' : `${ev.outOfRangeNotes}音オクターブ外`}</span>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+
+      highlightActiveKeyRankingRow(transposeShift);
+    }
+
+    function handleParsedMidi(parsed) {
+      parsedTracks = parsed.tracks.filter(t => t.notes.length > 0);
+      baseMidiBpm = parsed.bpm || 120;
+      currentBpm = Math.round(baseMidiBpm * playbackRate);
+      syncBpmUI();
+
+      const trackSelect = document.getElementById('trackSelect');
+      trackSelect.innerHTML = '';
+      trackSelect.disabled = false;
+
+      if (parsedTracks.length === 0) {
+        trackSelect.innerHTML = '<option>ノートイベントが見つかりませんでした</option>';
+        trackSelect.disabled = true;
+        return;
+      }
+
+      parsedTracks.forEach((t, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `${t.name} (Ch.${t.channel + 1} - ${t.notes.length}音)`;
+        trackSelect.appendChild(opt);
+      });
+
+      // Default select track with highest notes
+      let bestTrackIdx = 0;
+      let maxNotes = 0;
+      parsedTracks.forEach((t, i) => {
+        if (t.notes.length > maxNotes) {
+          maxNotes = t.notes.length;
+          bestTrackIdx = i;
+        }
+      });
+
+      trackSelect.value = bestTrackIdx;
+      onTrackSelected(bestTrackIdx);
+    }
+
+    document.getElementById('trackSelect').addEventListener('change', (e) => {
+      onTrackSelected(e.target.value);
+    });
+
+    /* ====================================================================
+       11. FILE DRAG & DROP / UPLOAD HANDLERS
+       ==================================================================== */
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('border-brand-500', 'bg-brand-500/5');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('border-brand-500', 'bg-brand-500/5');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('border-brand-500', 'bg-brand-500/5');
+      if (e.dataTransfer.files.length) {
+        loadMidiFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) {
+        loadMidiFile(e.target.files[0]);
+      }
+    });
+
+    function loadMidiFile(file) {
+      initAudio();
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parsed = MidiParser.parse(e.target.result);
+          handleParsedMidi(parsed);
+        } catch (err) {
+          console.error(err);
+          // Simple visual feedback instead of alert
+          const badge = document.getElementById('recomBadge');
+          badge.textContent = '解析エラー (不正なMIDI)';
+          badge.className = 'text-xs px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-400 font-semibold border border-rose-500/30';
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    /* ====================================================================
+       12. BUILT-IN DEMO PRESET MELODIES GENERATOR
+       ==================================================================== */
+    function loadPresetSong(type) {
+      initAudio();
+      let notes = [];
+      let name = '';
+
+      if (type === 'autumn') {
+        name = 'Jazz Standard (Autumn Leaves theme)';
+        // Famous melody: G4 -> A4 -> Bb4 -> Eb5 -> F4 -> G4 -> A4 -> D5 ...
+        const melody = [
+          { p: 67, d: 1.0 }, { p: 69, d: 1.0 }, { p: 70, d: 1.0 }, { p: 75, d: 2.5 },
+          { p: 65, d: 1.0 }, { p: 67, d: 1.0 }, { p: 69, d: 1.0 }, { p: 74, d: 2.5 },
+          { p: 63, d: 1.0 }, { p: 65, d: 1.0 }, { p: 67, d: 1.0 }, { p: 72, d: 2.5 },
+          { p: 62, d: 2.0 }, { p: 63, d: 1.0 }, { p: 65, d: 1.0 }, { p: 70, d: 2.0 },
+          { p: 69, d: 1.5 }, { p: 67, d: 3.0 }
+        ];
+        let t = 0;
+        notes = melody.map(m => {
+          const noteObj = {
+            pitch: m.p,
+            startTime: t,
+            endTime: t + m.d * 0.55,
+            duration: m.d * 0.55,
+            velocity: 90,
+            channel: 0
+          };
+          t += m.d * 0.6;
+          return noteObj;
+        });
+      } else if (type === 'pop') {
+        name = 'J-Pop Ballad Lead Line';
+        // Pentatonic-rich expressive melody
+        const melody = [
+          { p: 60, d: 0.5 }, { p: 64, d: 0.5 }, { p: 67, d: 0.7 }, { p: 69, d: 0.8 },
+          { p: 72, d: 1.2 }, { p: 71, d: 0.5 }, { p: 69, d: 0.5 }, { p: 67, d: 1.5 },
+          { p: 65, d: 0.5 }, { p: 67, d: 0.5 }, { p: 69, d: 0.5 }, { p: 72, d: 0.5 },
+          { p: 76, d: 2.0 }, { p: 74, d: 0.8 }, { p: 72, d: 2.5 }
+        ];
+        let t = 0;
+        notes = melody.map(m => {
+          const noteObj = {
+            pitch: m.p,
+            startTime: t,
+            endTime: t + m.d * 0.6,
+            duration: m.d * 0.6,
+            velocity: 95,
+            channel: 0
+          };
+          t += m.d * 0.65;
+          return noteObj;
+        });
+      } else {
+        name = 'J.S. Bach Minuet';
+        // D5 -> G4 -> A4 -> B4 -> C5 -> D5 -> G4 -> G4
+        const melody = [
+          { p: 74, d: 0.8 }, { p: 67, d: 0.4 }, { p: 69, d: 0.4 }, { p: 71, d: 0.4 }, { p: 72, d: 0.4 },
+          { p: 74, d: 0.8 }, { p: 67, d: 0.8 }, { p: 67, d: 0.8 },
+          { p: 76, d: 0.8 }, { p: 72, d: 0.4 }, { p: 74, d: 0.4 }, { p: 76, d: 0.4 }, { p: 77, d: 0.4 },
+          { p: 76, d: 0.8 }, { p: 74, d: 0.8 }, { p: 72, d: 0.8 },
+          { p: 71, d: 0.8 }, { p: 67, d: 0.4 }, { p: 69, d: 0.4 }, { p: 71, d: 0.4 }, { p: 72, d: 0.4 },
+          { p: 71, d: 0.8 }, { p: 69, d: 0.8 }, { p: 67, d: 1.8 }
+        ];
+        let t = 0;
+        notes = melody.map(m => {
+          const noteObj = {
+            pitch: m.p,
+            startTime: t,
+            endTime: t + m.d * 0.6,
+            duration: m.d * 0.6,
+            velocity: 85,
+            channel: 0
+          };
+          t += m.d * 0.65;
+          return noteObj;
+        });
+      }
+
+      const mockParsed = {
+        bpm: 110,
+        tracks: [{
+          trackIndex: 0,
+          name: name,
+          notes: notes,
+          channel: 0
+        }]
+      };
+
+      handleParsedMidi(mockParsed);
+    }
+
+    /* ====================================================================
+       13. INTERACTIVE ONE-OCTAVE QUICK TEST STRIP
+       ==================================================================== */
+    function buildQuickTestKeyboard() {
+      const strip = document.getElementById('quickTestKeys');
+      strip.innerHTML = '';
+      // Middle C4 (60) to C5 (72)
+      for (let p = 60; p <= 72; p++) {
+        const btn = document.createElement('button');
+        const isSharp = [1, 3, 6, 8, 10].includes(p % 12);
+        btn.className = `flex-1 min-w-[28px] h-9 rounded-lg text-[10px] font-bold font-mono transition active:scale-90 flex flex-col items-center justify-center border ${
+          isSharp ? 'bg-dark-900 border-dark-700 text-brand-400' : 'bg-dark-800 border-dark-700 text-white'
+        }`;
+        btn.textContent = NOTE_NAMES_SHARP[p % 12];
+        btn.onclick = () => {
+          initAudio();
+          // Always play true concert pitch, and update fingering to respect transposeShift
+          playTone(midiToFreq(p), 0.35, document.getElementById('synthToneSelect').value);
+          
+          const concertLabel = document.getElementById('curConcertNote');
+          const fingerLabel = document.getElementById('curFingeringNote');
+          const midiLabel = document.getElementById('curMidiNote');
+          const oledSub = document.getElementById('aeOledConcertSub');
+
+          const fingeredPitch = p + transposeShift;
+          if (concertLabel) concertLabel.textContent = midiToNoteName(p);
+          if (fingerLabel) fingerLabel.textContent = midiToNoteName(fingeredPitch);
+          if (midiLabel) midiLabel.textContent = `運指#${fingeredPitch} (実音#${p})`;
+          if (oledSub) oledSub.textContent = `実音: ${midiToNoteName(p)}`;
+
+          applyFingeringToUI(fingeredPitch);
+        };
+        strip.appendChild(btn);
+      }
+    }
+
+    /* ====================================================================
+       14. INITIALIZATION
+       ==================================================================== */
+    window.addEventListener('DOMContentLoaded', () => {
+      buildQuickTestKeyboard();
+      resizeCanvas();
+      
+      // Load default demo song
+      loadPresetSong('autumn');
+
+      // Click anywhere to wake audio context if locked
+      document.body.addEventListener('click', () => {
+        if (!audioCtx) initAudio();
+      }, { once: true });
+    });
+  </script>
+</body>
+</html>
